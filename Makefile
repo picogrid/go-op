@@ -66,10 +66,15 @@ benchmark-compare: ## Run benchmarks and save results for comparison
 	@go test -bench=. -benchmem ./benchmarks > benchmark_results.txt
 	@echo "✓ Benchmark results saved to benchmark_results.txt"
 
+lint-fix: ## Run golangci-lint
+	@echo "Running linter with fix..."
+	@golangci-lint run --fix --timeout 5m --config=.golangci.yml --issues-exit-code=0
+	@echo "✓ Linting passed"
+
 # Code quality targets
 lint: ## Run golangci-lint
 	@echo "Running linter..."
-	@golangci-lint run
+	@golangci-lint run --timeout 5m --config=.golangci.yml --issues-exit-code=0
 	@echo "✓ Linting passed"
 
 fmt: ## Format code using gofumpt

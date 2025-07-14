@@ -78,7 +78,7 @@ jobs:
           echo "Validating individual service specs..."
           for spec in ./generated-specs/*.yaml; do
             echo "Validating $spec"
-            redocly lint "$spec" --extends=recommended --format=codeframe || exit 1
+            redocly lint "$spec" --config=redocly.yaml --format=codeframe || exit 1
           done
           echo "✓ All OpenAPI specs are valid"
 
@@ -183,7 +183,7 @@ jobs:
             basename=$(basename "$spec")
             echo "### $basename" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
-            redocly lint "$spec" --extends=recommended --format=codeframe >> $GITHUB_STEP_SUMMARY 2>&1 || true
+            redocly lint "$spec" --config=redocly.yaml --format=codeframe >> $GITHUB_STEP_SUMMARY 2>&1 || true
             echo '```' >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
           done

@@ -252,20 +252,20 @@ func TestConvertSchemaToRequestBody(t *testing.T) {
 func TestAddParametersFromSchema(t *testing.T) {
 	gen := New(&Config{})
 
-	schema := &SchemaDefinition{
+	// Test path parameters - path parameters should always be required per OpenAPI spec
+	pathSchema := &SchemaDefinition{
 		Type: "object",
 		Properties: map[string]*SchemaDefinition{
 			"id": {
 				Type:        "string",
 				Description: "User ID",
 			},
-			"limit": {
-				Type:    "number",
-				Minimum: floatPtr(1),
-				Maximum: floatPtr(100),
+			"category": {
+				Type:        "string",
+				Description: "Category ID",
 			},
 		},
-		Required: []string{"id"},
+		Required: []string{"id", "category"}, // Both are required in schema
 	}
 
 	operation := operations.OpenAPIOperation{
@@ -273,10 +273,10 @@ func TestAddParametersFromSchema(t *testing.T) {
 	}
 
 	// Test path parameters
-	gen.addParametersFromSchema(schema, "path", &operation)
+	gen.addParametersFromSchema(pathSchema, "path", &operation)
 
 	if len(operation.Parameters) != 2 {
-		t.Errorf("Expected 2 parameters, got %d", len(operation.Parameters))
+		t.Errorf("Expected 2 path parameters, got %d", len(operation.Parameters))
 	}
 
 	// Check first parameter (id)
@@ -290,29 +290,74 @@ func TestAddParametersFromSchema(t *testing.T) {
 	}
 
 	if !idParam.Required {
-		t.Errorf("Expected id parameter to be required")
+		t.Errorf("Expected id path parameter to be required")
 	}
 
-	// Check second parameter (limit)
-	limitParam := operation.Parameters[1]
-	if limitParam.Name != "limit" {
-		t.Errorf("Expected second parameter name 'limit', got '%s'", limitParam.Name)
+	// Check second parameter (category)
+	categoryParam := operation.Parameters[1]
+	if categoryParam.Name != "category" {
+		t.Errorf("Expected second parameter name 'category', got '%s'", categoryParam.Name)
 	}
 
-	if limitParam.Required {
-		t.Errorf("Expected limit parameter to be optional")
+	if !categoryParam.Required {
+		t.Errorf("Expected category path parameter to be required")
 	}
 
-	// Test query parameters
+	// Test query parameters - these can be optional
+	querySchema := &SchemaDefinition{
+		Type: "object",
+		Properties: map[string]*SchemaDefinition{
+			"search": {
+				Type:        "string",
+				Description: "Search term",
+			},
+			"limit": {
+				Type:    "number",
+				Minimum: floatPtr(1),
+				Maximum: floatPtr(100),
+			},
+		},
+		Required: []string{"search"}, // Only search is required
+	}
+
 	operation.Parameters = []operations.OpenAPIParameter{}
-	gen.addParametersFromSchema(schema, "query", &operation)
+	gen.addParametersFromSchema(querySchema, "query", &operation)
 
 	if len(operation.Parameters) != 2 {
-		t.Errorf("Expected 2 parameters, got %d", len(operation.Parameters))
+		t.Errorf("Expected 2 query parameters, got %d", len(operation.Parameters))
 	}
 
-	if operation.Parameters[0].In != "query" {
-		t.Errorf("Expected parameters in 'query'")
+	// Find search parameter
+	var searchParam, limitParam *operations.OpenAPIParameter
+	for i := range operation.Parameters {
+		if operation.Parameters[i].Name == "search" {
+			searchParam = &operation.Parameters[i]
+		}
+		if operation.Parameters[i].Name == "limit" {
+			limitParam = &operation.Parameters[i]
+		}
+	}
+
+	if searchParam == nil {
+		t.Errorf("Expected to find search parameter")
+	} else {
+		if searchParam.In != "query" {
+			t.Errorf("Expected search parameter in 'query', got '%s'", searchParam.In)
+		}
+		if !searchParam.Required {
+			t.Errorf("Expected search parameter to be required")
+		}
+	}
+
+	if limitParam == nil {
+		t.Errorf("Expected to find limit parameter")
+	} else {
+		if limitParam.In != "query" {
+			t.Errorf("Expected limit parameter in 'query', got '%s'", limitParam.In)
+		}
+		if limitParam.Required {
+			t.Errorf("Expected limit parameter to be optional")
+		}
 	}
 }
 

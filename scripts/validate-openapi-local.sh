@@ -116,7 +116,7 @@ for service in "${services[@]}"; do
     spec_file="$SPECS_DIR/$service.yaml"
     print_step "Validating $service.yaml"
     
-    if redocly lint "$spec_file" --extends=recommended --format=codeframe; then
+    if redocly lint "$spec_file" --config=redocly.yaml --format=codeframe; then
         print_success "$service.yaml is valid"
     else
         print_error "$service.yaml has validation errors"
@@ -126,7 +126,7 @@ done
 
 # Validate combined spec
 print_step "Validating Combined Platform Specification"
-if redocly lint "$SPECS_DIR/combined-platform.yaml" --extends=recommended --format=codeframe; then
+if redocly lint "$SPECS_DIR/combined-platform.yaml" --config=redocly.yaml --format=codeframe; then
     print_success "combined-platform.yaml is valid"
 else
     print_error "combined-platform.yaml has validation errors"
