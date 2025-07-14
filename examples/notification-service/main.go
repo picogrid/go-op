@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/picogrid/go-op/operations"
 	"github.com/picogrid/go-op/validators"
 )
@@ -30,17 +31,17 @@ type Notification struct {
 
 // Template represents a notification template
 type Template struct {
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	Type        string                 `json:"type"`
-	Channel     string                 `json:"channel"`
-	Subject     string                 `json:"subject"`
-	Body        string                 `json:"body"`
-	Variables   []string               `json:"variables"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
-	IsActive    bool                   `json:"is_active"`
-	CreatedAt   time.Time              `json:"created_at"`
-	UpdatedAt   time.Time              `json:"updated_at"`
+	ID        string                 `json:"id"`
+	Name      string                 `json:"name"`
+	Type      string                 `json:"type"`
+	Channel   string                 `json:"channel"`
+	Subject   string                 `json:"subject"`
+	Body      string                 `json:"body"`
+	Variables []string               `json:"variables"`
+	Metadata  map[string]interface{} `json:"metadata,omitempty"`
+	IsActive  bool                   `json:"is_active"`
+	CreatedAt time.Time              `json:"created_at"`
+	UpdatedAt time.Time              `json:"updated_at"`
 }
 
 // Request types
@@ -127,12 +128,12 @@ type ListNotificationsQuery struct {
 }
 
 type GetNotificationStatsQuery struct {
-	UserID    string `json:"user_id" form:"user_id"`
-	DateFrom  string `json:"date_from" form:"date_from"`
-	DateTo    string `json:"date_to" form:"date_to"`
-	GroupBy   string `json:"group_by" form:"group_by"`
-	Channel   string `json:"channel" form:"channel"`
-	Type      string `json:"type" form:"type"`
+	UserID   string `json:"user_id" form:"user_id"`
+	DateFrom string `json:"date_from" form:"date_from"`
+	DateTo   string `json:"date_to" form:"date_to"`
+	GroupBy  string `json:"group_by" form:"group_by"`
+	Channel  string `json:"channel" form:"channel"`
+	Type     string `json:"type" form:"type"`
 }
 
 type ListTemplatesQuery struct {
@@ -154,10 +155,10 @@ type NotificationListResponse struct {
 }
 
 type BulkNotificationResponse struct {
-	JobID       string `json:"job_id"`
-	TotalCount  int    `json:"total_count"`
+	JobID       string     `json:"job_id"`
+	TotalCount  int        `json:"total_count"`
 	ScheduledAt *time.Time `json:"scheduled_at,omitempty"`
-	Status      string `json:"status"`
+	Status      string     `json:"status"`
 }
 
 type NotificationStatsResponse struct {
@@ -170,17 +171,17 @@ type NotificationStatsResponse struct {
 }
 
 type ChannelStats struct {
-	Channel    string  `json:"channel"`
-	TotalSent  int     `json:"total_sent"`
-	TotalRead  int     `json:"total_read"`
-	ReadRate   float64 `json:"read_rate"`
+	Channel   string  `json:"channel"`
+	TotalSent int     `json:"total_sent"`
+	TotalRead int     `json:"total_read"`
+	ReadRate  float64 `json:"read_rate"`
 }
 
 type TypeStats struct {
-	Type       string  `json:"type"`
-	TotalSent  int     `json:"total_sent"`
-	TotalRead  int     `json:"total_read"`
-	ReadRate   float64 `json:"read_rate"`
+	Type      string  `json:"type"`
+	TotalSent int     `json:"total_sent"`
+	TotalRead int     `json:"total_read"`
+	ReadRate  float64 `json:"read_rate"`
 }
 
 type StatsTimeSeriesPoint struct {
@@ -260,7 +261,7 @@ func getNotificationHandler(ctx context.Context, params GetNotificationParams, q
 }
 
 func markNotificationReadHandler(ctx context.Context, params MarkReadParams, query struct{}, body struct{}) (Notification, error) {
-	notification, _ := getNotificationHandler(ctx, GetNotificationParams{ID: params.ID}, struct{}{}, struct{}{})
+	notification, _ := getNotificationHandler(ctx, GetNotificationParams(params), struct{}{}, struct{}{})
 	now := time.Now()
 	notification.Status = "read"
 	notification.ReadAt = &now
@@ -350,8 +351,8 @@ func getTemplateHandler(ctx context.Context, params GetTemplateParams, query str
 }
 
 func updateTemplateHandler(ctx context.Context, params UpdateTemplateParams, query struct{}, body UpdateTemplateRequest) (Template, error) {
-	template, _ := getTemplateHandler(ctx, GetTemplateParams{ID: params.ID}, struct{}{}, struct{}{})
-	
+	template, _ := getTemplateHandler(ctx, GetTemplateParams(params), struct{}{}, struct{}{})
+
 	if body.Name != nil {
 		template.Name = *body.Name
 	}
@@ -370,7 +371,7 @@ func updateTemplateHandler(ctx context.Context, params UpdateTemplateParams, que
 	if body.IsActive != nil {
 		template.IsActive = *body.IsActive
 	}
-	
+
 	template.UpdatedAt = time.Now()
 	return template, nil
 }

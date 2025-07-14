@@ -43,23 +43,23 @@ func adminHandler(ctx context.Context, params struct{}, query struct{}, body str
 
 func main() {
 	engine := gin.Default()
-	
+
 	// Create OpenAPI generator
 	openAPIGen := operations.NewOpenAPIGenerator("Security Test API", "1.0.0")
-	
+
 	// Add security schemes
 	apiKeyAuth := goop.NewAPIKeyHeader("X-API-Key", "API key authentication")
 	err := openAPIGen.AddSecurityScheme("ApiKeyAuth", apiKeyAuth)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to add API key security scheme: %v", err))
 	}
-	
+
 	bearerAuth := goop.NewBearerAuth("JWT", "Bearer token authentication")
 	err = openAPIGen.AddSecurityScheme("BearerAuth", bearerAuth)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to add bearer security scheme: %v", err))
 	}
-	
+
 	oauth2Auth := goop.NewOAuth2AuthorizationCode(
 		"https://auth.example.com/oauth/authorize",
 		"https://auth.example.com/oauth/token",
@@ -75,34 +75,34 @@ func main() {
 	if err != nil {
 		panic(fmt.Sprintf("Failed to add OAuth2 security scheme: %v", err))
 	}
-	
+
 	// Set global security (optional - any of these can be used)
 	globalSecurity := goop.SecurityRequirements{}.RequireScheme("ApiKeyAuth").RequireScheme("BearerAuth")
 	openAPIGen.SetGlobalSecurity(globalSecurity)
-	
+
 	router := operations.NewRouter(engine, openAPIGen)
-	
+
 	// Define schemas
 	userParamsSchema := validators.Object(map[string]interface{}{
 		"id": validators.String().Min(1).Required(),
 	}).Required()
-	
+
 	userResponseSchema := validators.Object(map[string]interface{}{
 		"id":       validators.String().Required(),
 		"username": validators.String().Required(),
 		"email":    validators.Email(),
 	}).Required()
-	
+
 	adminResponseSchema := validators.Object(map[string]interface{}{
 		"message": validators.String().Required(),
 		"level":   validators.String().Required(),
 	}).Required()
-	
+
 	headerSchema := validators.Object(map[string]interface{}{
 		"X-Request-ID":  validators.String().Optional(),
 		"X-API-Version": validators.String().Optional().Default("v1"),
 	}).Optional()
-	
+
 	// Public endpoint (no authentication required)
 	publicOp := operations.NewSimple().
 		GET("/public/users/{id}").
@@ -119,7 +119,7 @@ func main() {
 			nil,
 			userResponseSchema,
 		))
-	
+
 	// API Key protected endpoint
 	apiKeyOp := operations.NewSimple().
 		GET("/api/users/{id}").
@@ -137,7 +137,7 @@ func main() {
 			nil,
 			userResponseSchema,
 		))
-	
+
 	// Bearer token protected endpoint
 	bearerOp := operations.NewSimple().
 		GET("/bearer/users/{id}").
@@ -154,7 +154,7 @@ func main() {
 			nil,
 			userResponseSchema,
 		))
-	
+
 	// OAuth2 protected endpoint with specific scopes
 	oauth2Op := operations.NewSimple().
 		GET("/oauth2/users/{id}").
@@ -171,7 +171,7 @@ func main() {
 			nil,
 			userResponseSchema,
 		))
-	
+
 	// Admin endpoint requiring OAuth2 with admin scope
 	adminOp := operations.NewSimple().
 		GET("/admin/status").
@@ -187,7 +187,7 @@ func main() {
 			nil,
 			adminResponseSchema,
 		))
-	
+
 	// Multi-auth endpoint (any of the specified auth methods can be used)
 	multiAuthOp := operations.NewSimple().
 		GET("/multi/users/{id}").
@@ -204,7 +204,7 @@ func main() {
 			nil,
 			userResponseSchema,
 		))
-	
+
 	// Register all operations
 	router.Register(publicOp)
 	router.Register(apiKeyOp)
@@ -212,7 +212,7 @@ func main() {
 	router.Register(oauth2Op)
 	router.Register(adminOp)
 	router.Register(multiAuthOp)
-	
+
 	// Health check
 	engine.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
@@ -220,7 +220,7 @@ func main() {
 			"service": "security-test",
 		})
 	})
-	
+
 	// Serve OpenAPI spec
 	engine.GET("/openapi.json", func(c *gin.Context) {
 		if err := openAPIGen.WriteToWriter(c.Writer); err != nil {
@@ -230,7 +230,7 @@ func main() {
 			return
 		}
 	})
-	
+
 	fmt.Println("🔒 Security Test API starting on :8002")
 	fmt.Println("📚 OpenAPI spec available at: http://localhost:8002/openapi.json")
 	fmt.Println("🔑 API Key endpoint: GET /api/users/{id} (requires X-API-Key header)")
@@ -239,6 +239,6 @@ func main() {
 	fmt.Println("👑 Admin endpoint: GET /admin/status (requires OAuth2 with 'admin' scope)")
 	fmt.Println("🔄 Multi-auth endpoint: GET /multi/users/{id} (accepts API Key OR Bearer)")
 	fmt.Println("🌍 Public endpoint: GET /public/users/{id} (no authentication)")
-	
+
 	engine.Run(":8002")
 }

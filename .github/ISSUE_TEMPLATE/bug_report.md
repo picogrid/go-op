@@ -40,7 +40,7 @@ Error message here
 ```
 
 ## Environment
-- **Go version**: (e.g., 1.22.0)
+- **Go version**: (e.g., 1.24.0)
 - **go-op version**: (e.g., v1.0.0)
 - **OS**: (e.g., macOS 14.0, Ubuntu 22.04, Windows 11)
 - **Architecture**: (e.g., amd64, arm64)

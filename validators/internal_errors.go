@@ -8,7 +8,7 @@ var errorKeys = struct {
 	Type     string
 	Custom   string
 
-	// String validation errors  
+	// String validation errors
 	MinLength string
 	MaxLength string
 	Pattern   string

@@ -68,11 +68,11 @@ func TestRegexErrorHandling(t *testing.T) {
 	t.Run("Invalid regex pattern handling", func(t *testing.T) {
 		// Test invalid regex patterns that should be handled gracefully
 		invalidPatterns := []string{
-			"[", // Unclosed bracket
-			"(", // Unclosed parenthesis
-			"*", // Invalid quantifier
+			"[",      // Unclosed bracket
+			"(",      // Unclosed parenthesis
+			"*",      // Invalid quantifier
 			"(?P<>)", // Invalid named group
-			"\\", // Trailing backslash
+			"\\",     // Trailing backslash
 		}
 
 		for _, pattern := range invalidPatterns {
@@ -92,7 +92,7 @@ func TestRegexErrorHandling(t *testing.T) {
 				// Validation might fail, but should not panic
 				requiredSchema := schema.Required()
 				err := requiredSchema.Validate("test")
-				
+
 				// We expect an error due to invalid regex, but not a panic
 				if err == nil {
 					t.Logf("Warning: Invalid regex pattern '%s' did not produce validation error", pattern)
@@ -103,15 +103,15 @@ func TestRegexErrorHandling(t *testing.T) {
 
 	t.Run("Valid regex patterns work correctly", func(t *testing.T) {
 		validPatterns := map[string]string{
-			"^[a-z]+$": "lowercase",
+			"^[a-z]+$":             "lowercase",
 			"\\d{3}-\\d{3}-\\d{4}": "123-456-7890",
-			"^[A-Z][a-z]*$": "Title",
+			"^[A-Z][a-z]*$":        "Title",
 		}
 
 		for pattern, testValue := range validPatterns {
 			t.Run("pattern_"+pattern, func(t *testing.T) {
 				schema := String().Pattern(pattern).Required()
-				
+
 				// Test valid input
 				err := schema.Validate(testValue)
 				if err != nil {
@@ -146,12 +146,12 @@ func TestArrayValidationRaceConditions(t *testing.T) {
 		// Run concurrent validations
 		for i := 0; i < numGoroutines; i++ {
 			wg.Add(2)
-			
+
 			go func(index int) {
 				defer wg.Done()
 				errors[index*2] = arraySchema.Validate(validArray)
 			}(i)
-			
+
 			go func(index int) {
 				defer wg.Done()
 				errors[index*2+1] = arraySchema.Validate(invalidArray)
@@ -166,7 +166,7 @@ func TestArrayValidationRaceConditions(t *testing.T) {
 			if errors[i*2] != nil {
 				t.Errorf("Valid array failed validation in goroutine %d: %v", i, errors[i*2])
 			}
-			
+
 			// Invalid array should fail
 			if errors[i*2+1] == nil {
 				t.Errorf("Invalid array passed validation in goroutine %d", i)
@@ -180,8 +180,8 @@ func TestArrayValidationRaceConditions(t *testing.T) {
 		arraySchema := Array(baseSchema).Required()
 
 		testArrays := [][]interface{}{
-			{"hello", "world", "testing"}, // All >= 5 chars: should pass
-			{"short", "verylongstring", "hi"}, // "hi" < 5 chars: should fail  
+			{"hello", "world", "testing"},        // All >= 5 chars: should pass
+			{"short", "verylongstring", "hi"},    // "hi" < 5 chars: should fail
 			{"test1", "test2", "test3", "test4"}, // All >= 5 chars: should pass
 		}
 
@@ -203,9 +203,9 @@ func TestArrayValidationRaceConditions(t *testing.T) {
 		for i, err := range results {
 			hasError := err != nil
 			expectError := !expectedResults[i]
-			
+
 			if hasError != expectError {
-				t.Errorf("Array %d: expected error=%v, got error=%v (%v)", 
+				t.Errorf("Array %d: expected error=%v, got error=%v (%v)",
 					i, expectError, hasError, err)
 			}
 		}
@@ -235,9 +235,9 @@ func TestEdgeCaseValues(t *testing.T) {
 			t.Run(tc.name, func(t *testing.T) {
 				err := schema.Validate(tc.value)
 				hasError := err != nil
-				
+
 				if hasError != tc.hasError {
-					t.Errorf("Value %v: expected error=%v, got error=%v (%v)", 
+					t.Errorf("Value %v: expected error=%v, got error=%v (%v)",
 						tc.value, tc.hasError, hasError, err)
 				}
 			})
@@ -247,7 +247,7 @@ func TestEdgeCaseValues(t *testing.T) {
 	t.Run("Number constraints with special values", func(t *testing.T) {
 		t.Run("Min/Max with infinity", func(t *testing.T) {
 			schema := Number().Min(math.Inf(-1)).Max(math.Inf(1)).Required()
-			
+
 			err := schema.Validate(1000000.0)
 			if err != nil {
 				t.Errorf("Regular number should pass with infinite bounds: %v", err)
@@ -256,7 +256,7 @@ func TestEdgeCaseValues(t *testing.T) {
 
 		t.Run("Integer validation with special values", func(t *testing.T) {
 			schema := Number().Integer().Required()
-			
+
 			testCases := []struct {
 				name     string
 				value    float64
@@ -265,17 +265,17 @@ func TestEdgeCaseValues(t *testing.T) {
 				{"integer as float", 42.0, false},
 				{"non-integer", 42.5, true},
 				{"very large integer", 9007199254740992.0, false}, // 2^53
-				{"infinity", math.Inf(1), false}, // Infinity might be accepted as valid float64
-				{"NaN", math.NaN(), true}, // NaN is not an integer
+				{"infinity", math.Inf(1), false},                  // Infinity might be accepted as valid float64
+				{"NaN", math.NaN(), true},                         // NaN is not an integer
 			}
 
 			for _, tc := range testCases {
 				t.Run(tc.name, func(t *testing.T) {
 					err := schema.Validate(tc.value)
 					hasError := err != nil
-					
+
 					if hasError != tc.hasError {
-						t.Errorf("Value %v: expected error=%v, got error=%v (%v)", 
+						t.Errorf("Value %v: expected error=%v, got error=%v (%v)",
 							tc.value, tc.hasError, hasError, err)
 					}
 				})
@@ -293,21 +293,21 @@ func TestEdgeCaseValues(t *testing.T) {
 		}{
 			{"emoji", "🚀", false},
 			{"multi-byte unicode", "你好", false},
-			{"combining characters", "e\u0301", false}, // e with acute accent
+			{"combining characters", "e\u0301", false},     // e with acute accent
 			{"zero width characters", "test\u200B", false}, // Zero-width space
-			{"surrogate pairs", "𝓗𝓮𝓵𝓵𝓸", true}, // These are longer than 10 characters  
-			{"long emoji sequence", "👨‍👩‍👧‍👦", true}, // This is longer than 10 characters
-			{"empty string", "", true}, // Below minimum
-			{"very long unicode", "🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀", true}, // Above maximum
+			{"surrogate pairs", "𝓗𝓮𝓵𝓵𝓸", true},             // These are longer than 10 characters
+			{"long emoji sequence", "👨‍👩‍👧‍👦", true},       // This is longer than 10 characters
+			{"empty string", "", true},                     // Below minimum
+			{"very long unicode", "🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀", true},     // Above maximum
 		}
 
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
 				err := schema.Validate(tc.value)
 				hasError := err != nil
-				
+
 				if hasError != tc.hasError {
-					t.Errorf("Value '%s': expected error=%v, got error=%v (%v)", 
+					t.Errorf("Value '%s': expected error=%v, got error=%v (%v)",
 						tc.value, tc.hasError, hasError, err)
 				}
 			})
@@ -350,7 +350,7 @@ func TestCustomValidationFunctions(t *testing.T) {
 			if n != float64(int(n)) || n < 2 {
 				return errors.New("must be a prime number")
 			}
-			
+
 			num := int(n)
 			for i := 2; i*i <= num; i++ {
 				if num%i == 0 {
@@ -393,35 +393,35 @@ func TestAdvancedErrorMessageCustomization(t *testing.T) {
 			expectedError string
 		}{
 			{
-				"below minimum", 
-				func() RequiredNumberBuilder { 
-					return Number().Min(10).WithMinMessage("Custom min error").Required() 
+				"below minimum",
+				func() RequiredNumberBuilder {
+					return Number().Min(10).WithMinMessage("Custom min error").Required()
 				},
-				5.0, 
+				5.0,
 				"Field: 5, Error: Custom min error",
 			},
 			{
-				"above maximum", 
-				func() RequiredNumberBuilder { 
-					return Number().Max(100).WithMaxMessage("Custom max error").Required() 
+				"above maximum",
+				func() RequiredNumberBuilder {
+					return Number().Max(100).WithMaxMessage("Custom max error").Required()
 				},
-				150.0, 
+				150.0,
 				"Field: 150, Error: Custom max error",
 			},
 			{
-				"not integer", 
-				func() RequiredNumberBuilder { 
-					return Number().Integer().WithIntegerMessage("Custom integer error").Required() 
+				"not integer",
+				func() RequiredNumberBuilder {
+					return Number().Integer().WithIntegerMessage("Custom integer error").Required()
 				},
-				50.5, 
+				50.5,
 				"Field: 50.5, Error: Custom integer error",
 			},
 			{
-				"negative number", 
-				func() RequiredNumberBuilder { 
-					return Number().Positive().WithPositiveMessage("Custom positive error").Required() 
+				"negative number",
+				func() RequiredNumberBuilder {
+					return Number().Positive().WithPositiveMessage("Custom positive error").Required()
 				},
-				-5.0, 
+				-5.0,
 				"Field: -5, Error: Custom positive error",
 			},
 		}

@@ -2,8 +2,8 @@ package validators
 
 import (
 	"testing"
-	
-	"github.com/picogrid/go-op"
+
+	goop "github.com/picogrid/go-op"
 )
 
 // TestArrayContains tests array contains validation
@@ -96,10 +96,8 @@ func TestArrayCustomValidation(t *testing.T) {
 		invalidArray := []interface{}{"hello", "world"}
 		if err := schema.Validate(invalidArray); err == nil {
 			t.Error("Expected array without prefixed string to fail")
-		} else {
-			if !contains(err.Error(), "prefix_") {
-				t.Errorf("Expected custom error message, got: %v", err)
-			}
+		} else if !contains(err.Error(), "prefix_") {
+			t.Errorf("Expected custom error message, got: %v", err)
 		}
 	})
 

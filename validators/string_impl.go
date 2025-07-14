@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"regexp"
 
-	"github.com/picogrid/go-op"
+	goop "github.com/picogrid/go-op"
 )
 
 // Core string schema struct (unexported)
@@ -123,12 +123,12 @@ func (s *stringSchema) WithURLMessage(message string) StringBuilder {
 // These methods return RequiredStringBuilder to maintain the required state
 
 func (r *requiredStringSchema) Min(length int) RequiredStringBuilder {
-	r.stringSchema.minLength = length
+	r.minLength = length
 	return r
 }
 
 func (r *requiredStringSchema) Max(length int) RequiredStringBuilder {
-	r.stringSchema.maxLength = length
+	r.maxLength = length
 	return r
 }
 
@@ -136,38 +136,38 @@ func (r *requiredStringSchema) Pattern(pattern string) RequiredStringBuilder {
 	// Handle potential regex compilation errors gracefully
 	compiled, err := regexp.Compile(pattern)
 	if err != nil {
-		r.stringSchema.pattern = regexp.MustCompile(`$^`) // This pattern never matches anything
-		if r.stringSchema.customError == nil {
-			r.stringSchema.customError = make(map[string]string)
+		r.pattern = regexp.MustCompile(`$^`) // This pattern never matches anything
+		if r.customError == nil {
+			r.customError = make(map[string]string)
 		}
-		r.stringSchema.customError[errorKeys.Pattern] = fmt.Sprintf("invalid regex pattern: %v", err)
+		r.customError[errorKeys.Pattern] = fmt.Sprintf("invalid regex pattern: %v", err)
 	} else {
-		r.stringSchema.pattern = compiled
+		r.pattern = compiled
 	}
 	return r
 }
 
 func (r *requiredStringSchema) Email() RequiredStringBuilder {
-	r.stringSchema.emailFormat = true
+	r.emailFormat = true
 	return r
 }
 
 func (r *requiredStringSchema) URL() RequiredStringBuilder {
-	r.stringSchema.urlFormat = true
+	r.urlFormat = true
 	return r
 }
 
 func (r *requiredStringSchema) Custom(fn func(string) error) RequiredStringBuilder {
-	r.stringSchema.customFunc = fn
+	r.customFunc = fn
 	return r
 }
 
 // Error message methods for RequiredStringBuilder
 func (r *requiredStringSchema) WithMessage(validationType, message string) RequiredStringBuilder {
-	if r.stringSchema.customError == nil {
-		r.stringSchema.customError = make(map[string]string)
+	if r.customError == nil {
+		r.customError = make(map[string]string)
 	}
-	r.stringSchema.customError[validationType] = message
+	r.customError[validationType] = message
 	return r
 }
 
@@ -199,12 +199,12 @@ func (r *requiredStringSchema) WithRequiredMessage(message string) RequiredStrin
 // These methods return OptionalStringBuilder to maintain the optional state
 
 func (o *optionalStringSchema) Min(length int) OptionalStringBuilder {
-	o.stringSchema.minLength = length
+	o.minLength = length
 	return o
 }
 
 func (o *optionalStringSchema) Max(length int) OptionalStringBuilder {
-	o.stringSchema.maxLength = length
+	o.maxLength = length
 	return o
 }
 
@@ -212,44 +212,44 @@ func (o *optionalStringSchema) Pattern(pattern string) OptionalStringBuilder {
 	// Handle potential regex compilation errors gracefully
 	compiled, err := regexp.Compile(pattern)
 	if err != nil {
-		o.stringSchema.pattern = regexp.MustCompile(`$^`) // This pattern never matches anything
-		if o.stringSchema.customError == nil {
-			o.stringSchema.customError = make(map[string]string)
+		o.pattern = regexp.MustCompile(`$^`) // This pattern never matches anything
+		if o.customError == nil {
+			o.customError = make(map[string]string)
 		}
-		o.stringSchema.customError[errorKeys.Pattern] = fmt.Sprintf("invalid regex pattern: %v", err)
+		o.customError[errorKeys.Pattern] = fmt.Sprintf("invalid regex pattern: %v", err)
 	} else {
-		o.stringSchema.pattern = compiled
+		o.pattern = compiled
 	}
 	return o
 }
 
 func (o *optionalStringSchema) Email() OptionalStringBuilder {
-	o.stringSchema.emailFormat = true
+	o.emailFormat = true
 	return o
 }
 
 func (o *optionalStringSchema) URL() OptionalStringBuilder {
-	o.stringSchema.urlFormat = true
+	o.urlFormat = true
 	return o
 }
 
 func (o *optionalStringSchema) Custom(fn func(string) error) OptionalStringBuilder {
-	o.stringSchema.customFunc = fn
+	o.customFunc = fn
 	return o
 }
 
 // Default is only available on optional builders - this is the key DX improvement!
 func (o *optionalStringSchema) Default(value string) OptionalStringBuilder {
-	o.stringSchema.defaultValue = &value
+	o.defaultValue = &value
 	return o
 }
 
 // Error message methods for OptionalStringBuilder
 func (o *optionalStringSchema) WithMessage(validationType, message string) OptionalStringBuilder {
-	if o.stringSchema.customError == nil {
-		o.stringSchema.customError = make(map[string]string)
+	if o.customError == nil {
+		o.customError = make(map[string]string)
 	}
-	o.stringSchema.customError[validationType] = message
+	o.customError[validationType] = message
 	return o
 }
 
@@ -275,11 +275,11 @@ func (o *optionalStringSchema) WithURLMessage(message string) OptionalStringBuil
 
 // Validation methods - these are the final methods in the builder chain
 func (r *requiredStringSchema) Validate(data interface{}) error {
-	return r.stringSchema.validate(data)
+	return r.validate(data)
 }
 
 func (o *optionalStringSchema) Validate(data interface{}) error {
-	return o.stringSchema.validate(data)
+	return o.validate(data)
 }
 
 // Core validation logic (shared between required and optional)

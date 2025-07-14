@@ -1,0 +1,53 @@
+# redocly.yaml - OpenAPI validation configuration for go-op project
+# This configuration ensures consistent OpenAPI validation for all generated specifications
+
+extends:
+  - minimal  # Use minimal rules for development-friendly validation
+
+rules:
+  # Core validation rules
+  info-license: off  # Not required for internal APIs
+  info-contact: off  # Not required for internal APIs
+  
+  # Operation rules
+  operation-description: warn
+  operation-operationId: off  # We don't use operation IDs
+  operation-summary: error
+  operation-tag-defined: off  # Allow tags without global definition
+  
+  # Parameter rules
+  path-declaration-must-exist: error
+  path-not-include-query: error
+  path-parameters-defined: error
+  
+  # Security rules
+  security-defined: off  # Not all operations require security
+  
+  # Response rules
+  operation-4xx-response: warn
+  
+  # Schema rules
+  no-unresolved-refs: error
+  no-identical-paths: error
+  no-ambiguous-paths: error
+  
+  # Server rules
+  no-empty-servers: warn  # Allow specs without servers for development
+  
+  # Disable rules that don't apply to our use case
+  spec-components-invalid-map-name: off
+  boolean-parameter-prefixes: off
+
+# API definitions
+apis:
+  user-service:
+    root: ./generated-specs/user-service.yaml
+    
+  order-service:
+    root: ./generated-specs/order-service.yaml
+    
+  notification-service:
+    root: ./generated-specs/notification-service.yaml
+    
+  combined-platform:
+    root: ./generated-specs/combined-platform.yaml

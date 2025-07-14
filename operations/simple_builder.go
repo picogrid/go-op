@@ -1,24 +1,24 @@
 package operations
 
 import (
-	"github.com/picogrid/go-op"
+	goop "github.com/picogrid/go-op"
 )
 
 // Core operation configuration struct
 // This contains all the operation metadata and schemas
 type operationConfig struct {
-	method           string
-	path             string
-	summary          string
-	description      string
-	tags             []string
-	successCode      int
-	paramsSchema     goop.Schema
-	querySchema      goop.Schema
-	bodySchema       goop.Schema
-	responseSchema   goop.Schema
-	headerSchema     goop.Schema
-	security         goop.SecurityRequirements
+	method         string
+	path           string
+	summary        string
+	description    string
+	tags           []string
+	successCode    int
+	paramsSchema   goop.Schema
+	querySchema    goop.Schema
+	bodySchema     goop.Schema
+	responseSchema goop.Schema
+	headerSchema   goop.Schema
+	security       goop.SecurityRequirements
 }
 
 // Helper method to compile the final operation
@@ -191,12 +191,12 @@ func (s *SimpleOperationBuilder) RequireAnyOf(schemes ...string) *SimpleOperatio
 	if s.config.security == nil {
 		s.config.security = goop.SecurityRequirements{}
 	}
-	
+
 	requirements := make([]goop.SecurityRequirement, len(schemes))
 	for i, scheme := range schemes {
 		requirements[i] = goop.SecurityRequirement{scheme: []string{}}
 	}
-	
+
 	s.config.security = s.config.security.RequireAny(requirements...)
 	return s
 }

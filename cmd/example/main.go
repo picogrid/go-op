@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/picogrid/go-op/operations"
 	"github.com/picogrid/go-op/validators"
 )

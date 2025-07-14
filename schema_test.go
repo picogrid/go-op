@@ -486,15 +486,15 @@ func TestSchemaIntegration(t *testing.T) {
 			ValidateFunc: func(data interface{}) error {
 				// Simulate complex validation logic
 				time.Sleep(1 * time.Millisecond)
-				
+
 				if data == nil {
 					return NewValidationError("data", data, "Data cannot be nil")
 				}
-				
+
 				if str, ok := data.(string); ok && len(str) == 0 {
 					return NewValidationError("data", data, "String cannot be empty")
 				}
-				
+
 				return nil
 			},
 		}
@@ -502,11 +502,12 @@ func TestSchemaIntegration(t *testing.T) {
 		// Generate large dataset
 		dataList := make([]interface{}, 1000)
 		for i := range dataList {
-			if i%10 == 0 {
+			switch {
+			case i%10 == 0:
 				dataList[i] = nil // 10% invalid data (every 10th: 0, 10, 20, 30, ...)
-			} else if i%25 == 1 {
+			case i%25 == 1:
 				dataList[i] = "" // 4% empty strings (1, 26, 51, 76, ...)
-			} else {
+			default:
 				dataList[i] = "valid data"
 			}
 		}
@@ -531,7 +532,7 @@ func TestSchemaIntegration(t *testing.T) {
 			}
 		}
 
-		expectedValid := 860  // 86% should be valid (1000 - 100 nil - 40 empty = 860)
+		expectedValid := 860   // 86% should be valid (1000 - 100 nil - 40 empty = 860)
 		expectedInvalid := 140 // 14% should be invalid (100 nil + 40 empty = 140)
 
 		if validCount != expectedValid {

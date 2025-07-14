@@ -39,6 +39,7 @@ Thumbs.db
 *.yaml
 *.json
 !/examples/services.yaml
+!/redocly.yaml
 
 # Test coverage
 coverage.html
@@ -84,3 +85,5 @@ api-spec.*
 # Don't ignore CLI source code
 !/cmd/
 *.iml
+go-op-cli
+docs

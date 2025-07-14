@@ -44,14 +44,14 @@ type ServicesConfig struct {
 
 // ServiceConfig represents configuration for a single service
 type ServiceConfig struct {
-	Name         string   `yaml:"name"`
-	SpecFile     string   `yaml:"spec_file"`
-	PathPrefix   string   `yaml:"path_prefix,omitempty"`
-	Tags         []string `yaml:"tags,omitempty"`
-	Enabled      bool     `yaml:"enabled,omitempty"`
-	Description  string   `yaml:"description,omitempty"`
-	HealthCheck  string   `yaml:"health_check,omitempty"`
-	Version      string   `yaml:"version,omitempty"`
+	Name        string   `yaml:"name"`
+	SpecFile    string   `yaml:"spec_file"`
+	PathPrefix  string   `yaml:"path_prefix,omitempty"`
+	Tags        []string `yaml:"tags,omitempty"`
+	Enabled     bool     `yaml:"enabled,omitempty"`
+	Description string   `yaml:"description,omitempty"`
+	HealthCheck string   `yaml:"health_check,omitempty"`
+	Version     string   `yaml:"version,omitempty"`
 }
 
 // CombinationSettings holds global settings for spec combination

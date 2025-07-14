@@ -5,8 +5,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/picogrid/go-op/internal/combiner"
 	"github.com/spf13/cobra"
+
+	"github.com/picogrid/go-op/internal/combiner"
 )
 
 var combineCmd = &cobra.Command{

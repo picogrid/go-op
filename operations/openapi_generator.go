@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
-	"github.com/picogrid/go-op"
+	goop "github.com/picogrid/go-op"
 )
 
 // OpenAPIGenerator generates OpenAPI 3.1 specifications from operations
@@ -61,7 +62,7 @@ type OpenAPIParameter struct {
 	Name        string              `json:"name" yaml:"name"`
 	In          string              `json:"in" yaml:"in"` // "path", "query", "header", "cookie"
 	Description string              `json:"description,omitempty" yaml:"description,omitempty"`
-	Required    bool                `json:"required,omitempty" yaml:"required,omitempty"`
+	Required    bool                `json:"required" yaml:"required"`
 	Schema      *goop.OpenAPISchema `json:"schema,omitempty" yaml:"schema,omitempty"`
 }
 
@@ -85,8 +86,8 @@ type OpenAPIMediaType struct {
 
 // OpenAPIComponents represents the components section of OpenAPI spec
 type OpenAPIComponents struct {
-	Schemas         map[string]*goop.OpenAPISchema         `json:"schemas,omitempty" yaml:"schemas,omitempty"`
-	SecuritySchemes map[string]goop.SecuritySchemeObject   `json:"securitySchemes,omitempty" yaml:"securitySchemes,omitempty"`
+	Schemas         map[string]*goop.OpenAPISchema       `json:"schemas,omitempty" yaml:"schemas,omitempty"`
+	SecuritySchemes map[string]goop.SecuritySchemeObject `json:"securitySchemes,omitempty" yaml:"securitySchemes,omitempty"`
 }
 
 // NewOpenAPIGenerator creates a new OpenAPI generator
@@ -116,16 +117,16 @@ func (g *OpenAPIGenerator) AddSecurityScheme(name string, scheme goop.SecuritySc
 	if err := goop.ValidateSecuritySchemeName(name); err != nil {
 		return fmt.Errorf("invalid security scheme name: %v", err)
 	}
-	
+
 	// Validate the security scheme
 	if err := scheme.Validate(); err != nil {
 		return fmt.Errorf("invalid security scheme '%s': %v", name, err)
 	}
-	
+
 	// Add to both the generator and the OpenAPI spec
 	g.SecuritySchemes[name] = scheme
 	g.Spec.Components.SecuritySchemes[name] = scheme.ToOpenAPI()
-	
+
 	return nil
 }
 
@@ -202,7 +203,7 @@ func (g *OpenAPIGenerator) Process(info OperationInfo) error {
 	response := OpenAPIResponse{
 		Description: "Successful response",
 	}
-	
+
 	if info.Operation.ResponseSpec != nil {
 		response.Content = map[string]OpenAPIMediaType{
 			"application/json": {
@@ -210,7 +211,7 @@ func (g *OpenAPIGenerator) Process(info OperationInfo) error {
 			},
 		}
 	}
-	
+
 	operation.Responses[successCode] = response
 
 	// Add common error responses
@@ -221,7 +222,7 @@ func (g *OpenAPIGenerator) Process(info OperationInfo) error {
 				Schema: &goop.OpenAPISchema{
 					Type: "object",
 					Properties: map[string]*goop.OpenAPISchema{
-						"error": {Type: "string"},
+						"error":   {Type: "string"},
 						"details": {Type: "string"},
 					},
 					Required: []string{"error"},
@@ -237,7 +238,7 @@ func (g *OpenAPIGenerator) Process(info OperationInfo) error {
 				Schema: &goop.OpenAPISchema{
 					Type: "object",
 					Properties: map[string]*goop.OpenAPISchema{
-						"error": {Type: "string"},
+						"error":   {Type: "string"},
 						"details": {Type: "string"},
 					},
 					Required: []string{"error"},
@@ -255,7 +256,7 @@ func (g *OpenAPIGenerator) Process(info OperationInfo) error {
 // extractPathParameters extracts path parameters from the schema and path
 func (g *OpenAPIGenerator) extractPathParameters(path string, schema *goop.OpenAPISchema) []OpenAPIParameter {
 	var parameters []OpenAPIParameter
-	
+
 	if schema.Type == "object" && schema.Properties != nil {
 		for paramName, paramSchema := range schema.Properties {
 			// Check if this parameter is in the path
@@ -270,14 +271,14 @@ func (g *OpenAPIGenerator) extractPathParameters(path string, schema *goop.OpenA
 			}
 		}
 	}
-	
+
 	return parameters
 }
 
 // extractQueryParameters extracts query parameters from the schema
 func (g *OpenAPIGenerator) extractQueryParameters(schema *goop.OpenAPISchema) []OpenAPIParameter {
 	var parameters []OpenAPIParameter
-	
+
 	if schema.Type == "object" && schema.Properties != nil {
 		for paramName, paramSchema := range schema.Properties {
 			required := false
@@ -287,7 +288,7 @@ func (g *OpenAPIGenerator) extractQueryParameters(schema *goop.OpenAPISchema) []
 					break
 				}
 			}
-			
+
 			parameter := OpenAPIParameter{
 				Name:     paramName,
 				In:       "query",
@@ -297,14 +298,14 @@ func (g *OpenAPIGenerator) extractQueryParameters(schema *goop.OpenAPISchema) []
 			parameters = append(parameters, parameter)
 		}
 	}
-	
+
 	return parameters
 }
 
 // extractHeaderParameters extracts header parameters from the schema
 func (g *OpenAPIGenerator) extractHeaderParameters(schema *goop.OpenAPISchema) []OpenAPIParameter {
 	var parameters []OpenAPIParameter
-	
+
 	if schema.Type == "object" && schema.Properties != nil {
 		for paramName, paramSchema := range schema.Properties {
 			required := false
@@ -314,7 +315,7 @@ func (g *OpenAPIGenerator) extractHeaderParameters(schema *goop.OpenAPISchema) [
 					break
 				}
 			}
-			
+
 			parameter := OpenAPIParameter{
 				Name:     paramName,
 				In:       "header",
@@ -324,12 +325,18 @@ func (g *OpenAPIGenerator) extractHeaderParameters(schema *goop.OpenAPISchema) [
 			parameters = append(parameters, parameter)
 		}
 	}
-	
+
 	return parameters
 }
 
 // WriteToFile writes the OpenAPI specification to a file
 func (g *OpenAPIGenerator) WriteToFile(filename string) error {
+	// Clean and validate the filename to prevent path traversal attacks
+	filename = filepath.Clean(filename)
+	if !filepath.IsAbs(filename) {
+		return fmt.Errorf("filename must be an absolute path")
+	}
+
 	file, err := os.Create(filename)
 	if err != nil {
 		return fmt.Errorf("failed to create file %s: %w", filename, err)

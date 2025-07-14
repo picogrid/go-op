@@ -201,18 +201,18 @@ func TestValidationInfo(t *testing.T) {
 	t.Run("ValidationInfo with various constraint types", func(t *testing.T) {
 		info := &ValidationInfo{
 			Constraints: map[string]interface{}{
-				"minLength":    10,
-				"maxLength":    100,
-				"minimum":      0.0,
-				"maximum":      1000.5,
-				"pattern":      "^test",
-				"enum":         []string{"a", "b", "c"},
-				"required":     true,
-				"multipleOf":   2.5,
-				"uniqueItems":  true,
-				"minItems":     1,
-				"maxItems":     10,
-				"format":       "email",
+				"minLength":   10,
+				"maxLength":   100,
+				"minimum":     0.0,
+				"maximum":     1000.5,
+				"pattern":     "^test",
+				"enum":        []string{"a", "b", "c"},
+				"required":    true,
+				"multipleOf":  2.5,
+				"uniqueItems": true,
+				"minItems":    1,
+				"maxItems":    10,
+				"format":      "email",
 			},
 		}
 

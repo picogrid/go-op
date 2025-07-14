@@ -7,25 +7,25 @@
 
 **Go Operations & Parsing** - A comprehensive API framework for building type-safe APIs with build-time OpenAPI 3.1 generation. Go-Op combines powerful validation with automatic API documentation generation for microservices.
 
-## 🚀 Features
+## Features
 
-- **🔧 Build-Time OpenAPI Generation**: Generate OpenAPI 3.1 specs from Go source code using AST analysis
-- **⚡ Zero Runtime Reflection**: Maximum performance with compile-time validation and schema extraction
-- **🎯 Type-Safe API Framework**: Built on fluent validation chains with comprehensive error handling
-- **🔒 Generic Struct Validation**: Compile-time type safety with Go generics - no runtime reflection needed
-- **🏗️ Microservices Ready**: Multi-service spec combination and CLI tools for complex architectures
-- **📊 OpenAPI 3.1 Compliant**: Full specification support with JSON Schema Draft 2020-12
-- **🔗 Gin Integration**: Seamless router integration with automatic validation middleware
-- **📈 High Performance**: Optimized validation with zero-allocation paths for simple types
-- **🛠️ Extensible**: Support for future protocols (gRPC, MQTT, etc.) via generator pattern
+- **Build-Time OpenAPI Generation**: Generate OpenAPI 3.1 specs from Go source code using AST analysis
+- **Zero Runtime Reflection**: Maximum performance with compile-time validation and schema extraction
+- **Type-Safe API Framework**: Built on fluent validation chains with comprehensive error handling
+- **Generic Struct Validation**: Compile-time type safety with Go generics - no runtime reflection needed
+- **Microservices Ready**: Multi-service spec combination and CLI tools for complex architectures
+- **OpenAPI 3.1 Compliant**: Full specification support with JSON Schema Draft 2020-12
+- **Gin Integration**: Seamless router integration with automatic validation middleware
+- **High Performance**: Optimized validation with zero-allocation paths for simple types
+- **Extensible**: Support for future protocols (gRPC, MQTT, etc.) via generator pattern
 
-## 📦 Installation
+## Installation
 
 ```bash
 go get github.com/picogrid/go-op
 ```
 
-## 🎯 Quick Start
+## Quick Start
 
 ### 1. Type-Safe API Service (Recommended)
 
@@ -145,7 +145,7 @@ go-op generate \
 # Result: Complete OpenAPI 3.1 spec with all endpoints, schemas, and validation rules
 ```
 
-## 🏗️ Microservices Architecture
+## Microservices Architecture
 
 ### Multiple Service Generation
 
@@ -190,7 +190,7 @@ services:
 go-op combine -c ./services.yaml -o ./platform-api.yaml
 ```
 
-## 📋 Validation Types
+## Validation Types
 
 ### Type-Safe Struct Validation (Recommended)
 
@@ -259,7 +259,7 @@ validators.Array(validators.String()).
     Max(10)                         // Maximum array length
 ```
 
-## 🛠️ CLI Commands
+## CLI Commands
 
 ### Generate Command
 ```bash
@@ -292,7 +292,7 @@ Flags:
   -v, --verbose               Enable verbose logging
 ```
 
-## 📈 Advanced Features
+## Advanced Features
 
 ### Type-Safe Path Parameters
 ```go
@@ -376,7 +376,7 @@ user, err := validateUser(requestData)
 query, err := validateQuery(queryParams)
 ```
 
-## 🎭 Example Microservices
+## Example Microservices
 
 See our [comprehensive examples](./examples/) demonstrating:
 
@@ -391,7 +391,7 @@ Each example showcases different API patterns:
 - Enum validation and constraints
 - Optional vs required field handling
 
-## 🚀 CI/CD Integration
+## CI/CD Integration
 
 ### GitHub Actions Example
 ```yaml
@@ -406,7 +406,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.22
+          go-version: 1.24
           
       - name: Install go-op CLI
         run: go install github.com/picogrid/go-op/cmd/goop@latest
@@ -421,7 +421,7 @@ jobs:
         run: ./deploy-docs.sh
 ```
 
-## 🔧 Development
+## Development
 
 ```bash
 # Clone repository
@@ -444,7 +444,7 @@ go test -bench=. ./benchmarks
 ./scripts/test-microservices.sh
 ```
 
-## 📊 Performance
+## Performance
 
 - **Zero runtime reflection** - Pure compile-time analysis using Go generics
 - **Build-time generation** - No performance impact on running services  
@@ -460,7 +460,7 @@ Map validation:     ~2,932 ns/op, 6,430 B/op,   78 allocs/op
 Performance gain:        20x faster,   33x less memory usage
 ```
 
-## 🎯 Key Benefits
+## Key Benefits
 
 1. **Always In Sync**: API docs generated from actual source code
 2. **Compile-Time Type Safety**: Full validation with Go generics and zero runtime reflection
@@ -470,28 +470,18 @@ Performance gain:        20x faster,   33x less memory usage
 6. **Developer Friendly**: Simple CLI with powerful features
 7. **High Performance**: 20x faster struct validation with 33x less memory usage
 
-## 🗺️ Roadmap
-
-- [ ] gRPC service definition generation
-- [ ] GraphQL schema generation  
-- [ ] MQTT topic schema support
-- [ ] Database migration generation
-- [ ] Mock server generation
-- [ ] Client SDK generation
-- [ ] API versioning and diffing tools
-
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Inspiration
+## Inspiration
 
 Inspired by [Zod](https://github.com/colinhacks/zod) for TypeScript and modern API development practices.
 
----
+Based off [Zod-Go](https://github.com/aymaneallaoui/zod-go)
 
-**Built with ❤️ for Go developers who value type safety, performance, and excellent developer experience.**
+---

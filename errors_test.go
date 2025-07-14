@@ -51,10 +51,8 @@ func TestNewValidationError(t *testing.T) {
 		// For maps, we need to check content rather than direct comparison
 		if errMap, ok := err.Value.(map[string]interface{}); !ok {
 			t.Errorf("Expected Value to be map[string]interface{}, got %T", err.Value)
-		} else {
-			if errMap["nested"] != "value" || errMap["number"] != 42 {
-				t.Errorf("Expected Value to contain correct map content, got %v", errMap)
-			}
+		} else if errMap["nested"] != "value" || errMap["number"] != 42 {
+			t.Errorf("Expected Value to contain correct map content, got %v", errMap)
 		}
 	})
 }
@@ -253,7 +251,7 @@ func TestCollectErrors(t *testing.T) {
 		grandChildErr := *NewValidationError("email", "invalid", "Invalid email")
 		childErr1 := *NewValidationError("name", "", "Name required")
 		childErr2 := *NewNestedValidationError("contact", nil, "Contact invalid", []ValidationError{grandChildErr})
-		
+
 		parentErr := NewNestedValidationError("user", nil, "User invalid", []ValidationError{childErr1, childErr2})
 
 		var flatErrors []map[string]string
@@ -314,9 +312,9 @@ func TestValidationErrorEdgeCases(t *testing.T) {
 	t.Run("Special characters in fields and messages", func(t *testing.T) {
 		specialField := "field\nwith\tspecial\rcharacters\""
 		specialMessage := "message with \"quotes\" and \nnewlines"
-		
+
 		err := NewValidationError(specialField, nil, specialMessage)
-		
+
 		jsonString := err.ErrorJSON()
 		var result map[string]string
 		if jsonErr := json.Unmarshal([]byte(jsonString), &result); jsonErr != nil {
@@ -390,7 +388,7 @@ func TestValidationErrorEdgeCases(t *testing.T) {
 func TestValidationErrorIntegration(t *testing.T) {
 	t.Run("Validation error implements error interface", func(t *testing.T) {
 		var err error = NewValidationError("field", "value", "message")
-		
+
 		errorString := err.Error()
 		expected := "Field: field, Error: message"
 		if errorString != expected {

@@ -4,19 +4,19 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/picogrid/go-op"
+	goop "github.com/picogrid/go-op"
 )
 
 // Core object schema struct (unexported)
 type objectSchema struct {
-	schema        map[string]interface{}
-	strictMode    bool
-	partialMode   bool
-	customFunc    func(map[string]interface{}) error
-	required      bool
-	optional      bool
-	defaultValue  map[string]interface{}
-	customError   map[string]string
+	schema       map[string]interface{}
+	strictMode   bool
+	partialMode  bool
+	customFunc   func(map[string]interface{}) error
+	required     bool
+	optional     bool
+	defaultValue map[string]interface{}
+	customError  map[string]string
 }
 
 // Core bool schema struct (unexported)
@@ -84,25 +84,25 @@ func (o *objectSchema) WithMessage(validationType, message string) ObjectBuilder
 
 // RequiredObjectBuilder implementation
 func (r *requiredObjectSchema) Strict() RequiredObjectBuilder {
-	r.objectSchema.strictMode = true
+	r.strictMode = true
 	return r
 }
 
 func (r *requiredObjectSchema) Partial() RequiredObjectBuilder {
-	r.objectSchema.partialMode = true
+	r.partialMode = true
 	return r
 }
 
 func (r *requiredObjectSchema) Custom(fn func(map[string]interface{}) error) RequiredObjectBuilder {
-	r.objectSchema.customFunc = fn
+	r.customFunc = fn
 	return r
 }
 
 func (r *requiredObjectSchema) WithMessage(validationType, message string) RequiredObjectBuilder {
-	if r.objectSchema.customError == nil {
-		r.objectSchema.customError = make(map[string]string)
+	if r.customError == nil {
+		r.customError = make(map[string]string)
 	}
-	r.objectSchema.customError[validationType] = message
+	r.customError[validationType] = message
 	return r
 }
 
@@ -111,40 +111,40 @@ func (r *requiredObjectSchema) WithRequiredMessage(message string) RequiredObjec
 }
 
 func (r *requiredObjectSchema) Validate(data interface{}) error {
-	return r.objectSchema.validate(data)
+	return r.validate(data)
 }
 
 // OptionalObjectBuilder implementation
 func (o *optionalObjectSchema) Strict() OptionalObjectBuilder {
-	o.objectSchema.strictMode = true
+	o.strictMode = true
 	return o
 }
 
 func (o *optionalObjectSchema) Partial() OptionalObjectBuilder {
-	o.objectSchema.partialMode = true
+	o.partialMode = true
 	return o
 }
 
 func (o *optionalObjectSchema) Custom(fn func(map[string]interface{}) error) OptionalObjectBuilder {
-	o.objectSchema.customFunc = fn
+	o.customFunc = fn
 	return o
 }
 
 func (o *optionalObjectSchema) Default(value map[string]interface{}) OptionalObjectBuilder {
-	o.objectSchema.defaultValue = value
+	o.defaultValue = value
 	return o
 }
 
 func (o *optionalObjectSchema) WithMessage(validationType, message string) OptionalObjectBuilder {
-	if o.objectSchema.customError == nil {
-		o.objectSchema.customError = make(map[string]string)
+	if o.customError == nil {
+		o.customError = make(map[string]string)
 	}
-	o.objectSchema.customError[validationType] = message
+	o.customError[validationType] = message
 	return o
 }
 
 func (o *optionalObjectSchema) Validate(data interface{}) error {
-	return o.objectSchema.validate(data)
+	return o.validate(data)
 }
 
 // Object validation logic
@@ -165,7 +165,7 @@ func (o *objectSchema) validate(data interface{}) error {
 
 	// Type check - convert to map[string]interface{}
 	var obj map[string]interface{}
-	
+
 	// Use reflection to handle different map types
 	val := reflect.ValueOf(data)
 	if val.Kind() != reflect.Map {
@@ -195,7 +195,7 @@ func (o *objectSchema) validate(data interface{}) error {
 	var details []goop.ValidationError
 	for fieldName, fieldSchema := range o.schema {
 		value, exists := obj[fieldName]
-		
+
 		// Handle missing fields
 		if !exists {
 			if !o.partialMode {
@@ -244,36 +244,36 @@ func (o *objectSchema) validateField(fieldSchema, value interface{}) error {
 	case *stringSchema:
 		// Create a required string validator from the unfinalized schema
 		requiredSchema := &requiredStringSchema{schema}
-		requiredSchema.stringSchema.required = true
-		requiredSchema.stringSchema.optional = false
+		requiredSchema.required = true
+		requiredSchema.optional = false
 		return requiredSchema.Validate(value)
-		
+
 	case *numberSchema:
 		// Create a required number validator from the unfinalized schema
 		requiredSchema := &requiredNumberSchema{schema}
-		requiredSchema.numberSchema.required = true
-		requiredSchema.numberSchema.optional = false
+		requiredSchema.required = true
+		requiredSchema.optional = false
 		return requiredSchema.Validate(value)
-		
+
 	case *objectSchema:
 		// Create a required object validator from the unfinalized schema
 		requiredSchema := &requiredObjectSchema{schema}
-		requiredSchema.objectSchema.required = true
-		requiredSchema.objectSchema.optional = false
+		requiredSchema.required = true
+		requiredSchema.optional = false
 		return requiredSchema.Validate(value)
-		
+
 	case *boolSchema:
-		// Create a required bool validator from the unfinalized schema  
+		// Create a required bool validator from the unfinalized schema
 		requiredSchema := &requiredBoolSchema{schema}
-		requiredSchema.boolSchema.required = true
-		requiredSchema.boolSchema.optional = false
+		requiredSchema.required = true
+		requiredSchema.optional = false
 		return requiredSchema.Validate(value)
-		
+
 	case *arraySchema:
 		// Create a required array validator from the unfinalized schema
 		requiredSchema := &requiredArraySchema{schema}
-		requiredSchema.arraySchema.required = true
-		requiredSchema.arraySchema.optional = false
+		requiredSchema.required = true
+		requiredSchema.optional = false
 		return requiredSchema.Validate(value)
 	}
 
@@ -337,15 +337,15 @@ func (b *boolSchema) WithMessage(validationType, message string) BoolBuilder {
 
 // RequiredBoolBuilder implementation
 func (r *requiredBoolSchema) Custom(fn func(bool) error) RequiredBoolBuilder {
-	r.boolSchema.customFunc = fn
+	r.customFunc = fn
 	return r
 }
 
 func (r *requiredBoolSchema) WithMessage(validationType, message string) RequiredBoolBuilder {
-	if r.boolSchema.customError == nil {
-		r.boolSchema.customError = make(map[string]string)
+	if r.customError == nil {
+		r.customError = make(map[string]string)
 	}
-	r.boolSchema.customError[validationType] = message
+	r.customError[validationType] = message
 	return r
 }
 
@@ -354,30 +354,30 @@ func (r *requiredBoolSchema) WithRequiredMessage(message string) RequiredBoolBui
 }
 
 func (r *requiredBoolSchema) Validate(data interface{}) error {
-	return r.boolSchema.validate(data)
+	return r.validate(data)
 }
 
 // OptionalBoolBuilder implementation
 func (o *optionalBoolSchema) Custom(fn func(bool) error) OptionalBoolBuilder {
-	o.boolSchema.customFunc = fn
+	o.customFunc = fn
 	return o
 }
 
 func (o *optionalBoolSchema) Default(value bool) OptionalBoolBuilder {
-	o.boolSchema.defaultValue = &value
+	o.defaultValue = &value
 	return o
 }
 
 func (o *optionalBoolSchema) WithMessage(validationType, message string) OptionalBoolBuilder {
-	if o.boolSchema.customError == nil {
-		o.boolSchema.customError = make(map[string]string)
+	if o.customError == nil {
+		o.customError = make(map[string]string)
 	}
-	o.boolSchema.customError[validationType] = message
+	o.customError[validationType] = message
 	return o
 }
 
 func (o *optionalBoolSchema) Validate(data interface{}) error {
-	return o.boolSchema.validate(data)
+	return o.validate(data)
 }
 
 // Bool validation logic

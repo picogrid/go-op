@@ -10,15 +10,15 @@ import (
 func TestNewASTAnalyzer(t *testing.T) {
 	fileSet := token.NewFileSet()
 	analyzer := NewASTAnalyzer(fileSet, true)
-	
+
 	if analyzer.fileSet != fileSet {
 		t.Errorf("Expected fileSet to be set")
 	}
-	
+
 	if !analyzer.verbose {
 		t.Errorf("Expected verbose to be true")
 	}
-	
+
 	if analyzer.schemaVars == nil {
 		t.Errorf("Expected schemaVars to be initialized")
 	}
@@ -26,7 +26,7 @@ func TestNewASTAnalyzer(t *testing.T) {
 
 func TestExtractStringLiteral(t *testing.T) {
 	analyzer := NewASTAnalyzer(token.NewFileSet(), false)
-	
+
 	tests := []struct {
 		code     string
 		expected string
@@ -38,14 +38,14 @@ func TestExtractStringLiteral(t *testing.T) {
 		{`123`, ""},      // not a string
 		{`variable`, ""}, // not a literal
 	}
-	
+
 	for _, test := range tests {
 		expr, err := parser.ParseExpr(test.code)
 		if err != nil {
 			t.Errorf("Failed to parse expression %s: %v", test.code, err)
 			continue
 		}
-		
+
 		result := analyzer.extractStringLiteral(expr)
 		if result != test.expected {
 			t.Errorf("extractStringLiteral(%s) = %s, expected %s", test.code, result, test.expected)
@@ -55,7 +55,7 @@ func TestExtractStringLiteral(t *testing.T) {
 
 func TestExtractNumberLiteral(t *testing.T) {
 	analyzer := NewASTAnalyzer(token.NewFileSet(), false)
-	
+
 	tests := []struct {
 		code     string
 		expected *float64
@@ -67,14 +67,14 @@ func TestExtractNumberLiteral(t *testing.T) {
 		{`"string"`, nil, false},
 		{`variable`, nil, false},
 	}
-	
+
 	for _, test := range tests {
 		expr, err := parser.ParseExpr(test.code)
 		if err != nil {
 			t.Errorf("Failed to parse expression %s: %v", test.code, err)
 			continue
 		}
-		
+
 		result := analyzer.extractNumberLiteral(expr)
 		if test.hasValue {
 			if result == nil {
@@ -92,7 +92,7 @@ func TestExtractNumberLiteral(t *testing.T) {
 
 func TestIsValidatorPackage(t *testing.T) {
 	analyzer := NewASTAnalyzer(token.NewFileSet(), false)
-	
+
 	tests := []struct {
 		code     string
 		expected bool
@@ -102,14 +102,14 @@ func TestIsValidatorPackage(t *testing.T) {
 		{`fmt`, false},
 		{`validators.String()`, false}, // This is a selector, not an ident
 	}
-	
+
 	for _, test := range tests {
 		expr, err := parser.ParseExpr(test.code)
 		if err != nil {
 			t.Errorf("Failed to parse expression %s: %v", test.code, err)
 			continue
 		}
-		
+
 		result := analyzer.isValidatorPackage(expr)
 		if result != test.expected {
 			t.Errorf("isValidatorPackage(%s) = %v, expected %v", test.code, result, test.expected)
@@ -119,7 +119,7 @@ func TestIsValidatorPackage(t *testing.T) {
 
 func TestIsRouterRegister(t *testing.T) {
 	analyzer := NewASTAnalyzer(token.NewFileSet(), false)
-	
+
 	tests := []struct {
 		code     string
 		expected bool
@@ -130,14 +130,14 @@ func TestIsRouterRegister(t *testing.T) {
 		{`router.Add(op)`, false},
 		{`router.register(op)`, false}, // lowercase
 	}
-	
+
 	for _, test := range tests {
 		expr, err := parser.ParseExpr(test.code)
 		if err != nil {
 			t.Errorf("Failed to parse expression %s: %v", test.code, err)
 			continue
 		}
-		
+
 		if callExpr, ok := expr.(*ast.CallExpr); ok {
 			result := analyzer.isRouterRegister(callExpr)
 			if result != test.expected {
@@ -151,7 +151,7 @@ func TestIsRouterRegister(t *testing.T) {
 
 func TestProcessMethodCall(t *testing.T) {
 	analyzer := NewASTAnalyzer(token.NewFileSet(), false)
-	
+
 	tests := []struct {
 		methodName string
 		args       []string
@@ -193,10 +193,10 @@ func TestProcessMethodCall(t *testing.T) {
 			},
 		},
 	}
-	
+
 	for _, test := range tests {
 		op := &OperationDefinition{Tags: []string{}}
-		
+
 		// Parse arguments
 		args := make([]ast.Expr, len(test.args))
 		for i, arg := range test.args {
@@ -207,9 +207,9 @@ func TestProcessMethodCall(t *testing.T) {
 			}
 			args[i] = expr
 		}
-		
+
 		analyzer.processMethodCall(test.methodName, args, op)
-		
+
 		if !test.checkOp(op) {
 			t.Errorf("processMethodCall(%s) failed check", test.methodName)
 		}
@@ -218,10 +218,10 @@ func TestProcessMethodCall(t *testing.T) {
 
 func TestProcessValidatorMethod(t *testing.T) {
 	analyzer := NewASTAnalyzer(token.NewFileSet(), false)
-	
+
 	tests := []struct {
-		methodName string
-		args       []string
+		methodName  string
+		args        []string
 		checkSchema func(*SchemaDefinition) bool
 	}{
 		{
@@ -280,14 +280,14 @@ func TestProcessValidatorMethod(t *testing.T) {
 			},
 		},
 	}
-	
+
 	for _, test := range tests {
 		schema := &SchemaDefinition{
 			Type:       "string", // Default type
 			Properties: make(map[string]*SchemaDefinition),
 			Required:   []string{},
 		}
-		
+
 		// Parse arguments
 		args := make([]ast.Expr, len(test.args))
 		for i, arg := range test.args {
@@ -298,9 +298,9 @@ func TestProcessValidatorMethod(t *testing.T) {
 			}
 			args[i] = expr
 		}
-		
+
 		analyzer.processValidatorMethod(test.methodName, args, schema)
-		
+
 		if !test.checkSchema(schema) {
 			t.Errorf("processValidatorMethod(%s) failed check", test.methodName)
 		}
@@ -342,20 +342,20 @@ func setupRoutes() {
 	router.Register(createUserOp)
 }
 `
-	
+
 	fileSet := token.NewFileSet()
 	file, err := parser.ParseFile(fileSet, "test.go", code, parser.ParseComments)
 	if err != nil {
 		t.Fatalf("Failed to parse test code: %v", err)
 	}
-	
+
 	analyzer := NewASTAnalyzer(fileSet, true)
 	operations := analyzer.ExtractOperations(file, "test.go")
-	
+
 	if len(operations) < 1 {
 		t.Errorf("Expected at least 1 operation, got %d", len(operations))
 	}
-	
+
 	// Check first operation (getUserOp)
 	if len(operations) > 0 {
 		op := operations[0]
@@ -400,28 +400,28 @@ func main() {
 	userData := map[string]string{"id": "123"}
 }
 `
-	
+
 	fileSet := token.NewFileSet()
 	file, err := parser.ParseFile(fileSet, "test.go", code, parser.ParseComments)
 	if err != nil {
 		t.Fatalf("Failed to parse test code: %v", err)
 	}
-	
+
 	analyzer := NewASTAnalyzer(fileSet, true)
-	
+
 	// Extract operations to trigger schema tracking
 	analyzer.ExtractOperations(file, "test.go")
-	
+
 	// Check that userSchema was tracked
 	if _, exists := analyzer.schemaVars["userSchema"]; !exists {
 		t.Errorf("Expected userSchema to be tracked")
 	}
-	
+
 	// Check that userData was not tracked
 	if _, exists := analyzer.schemaVars["userData"]; exists {
 		t.Errorf("Expected userData NOT to be tracked")
 	}
-	
+
 	// Verify the tracked schema
 	if schema, exists := analyzer.schemaVars["userSchema"]; exists {
 		if schema.Type != "object" {
@@ -430,7 +430,7 @@ func main() {
 		if len(schema.Properties) != 3 {
 			t.Errorf("Expected userSchema to have 3 properties, got %d", len(schema.Properties))
 		}
-		
+
 		// Check email property
 		if emailProp, exists := schema.Properties["email"]; exists {
 			if emailProp.Type != "string" {
@@ -442,7 +442,7 @@ func main() {
 		} else {
 			t.Errorf("Expected email property to exist")
 		}
-		
+
 		// Check name property constraints
 		if nameProp, exists := schema.Properties["name"]; exists {
 			if nameProp.MinLength == nil || *nameProp.MinLength != 1 {
@@ -482,23 +482,23 @@ var userResponseSchema = validators.Object(map[string]interface{}{
 	"email": validators.Email(),
 })
 `
-	
+
 	fileSet := token.NewFileSet()
 	file, err := parser.ParseFile(fileSet, "test.go", code, parser.ParseComments)
 	if err != nil {
 		t.Fatalf("Failed to parse test code: %v", err)
 	}
-	
+
 	analyzer := NewASTAnalyzer(fileSet, true)
 	operations := analyzer.ExtractOperations(file, "test.go")
-	
+
 	if len(operations) != 1 {
 		t.Errorf("Expected 1 operation, got %d", len(operations))
 		return
 	}
-	
+
 	op := operations[0]
-	
+
 	// Check that body schema was resolved
 	if op.Body == nil {
 		t.Errorf("Expected body schema to be resolved")
@@ -513,15 +513,13 @@ var userResponseSchema = validators.Object(map[string]interface{}{
 			t.Errorf("Expected body to have 2 properties or be a reference, got %d properties", len(op.Body.Properties))
 		}
 	}
-	
+
 	// Check that response schema reference was preserved (forward reference)
 	if op.Response == nil {
 		t.Errorf("Expected response schema to be set")
-	} else {
+	} else if op.Response.Description == "" && op.Response.Type == "object" && len(op.Response.Properties) == 0 {
 		// Since userResponseSchema is defined after its use, it might just have a description
-		if op.Response.Description == "" && op.Response.Type == "object" && len(op.Response.Properties) == 0 {
-			t.Errorf("Expected response schema to have some indication it's a reference")
-		}
+		t.Errorf("Expected response schema to have some indication it's a reference")
 	}
 }
 
@@ -532,31 +530,31 @@ func TestExtractObjectProperties(t *testing.T) {
 		"active": validators.Bool(),
 		"tags": validators.Array(),
 	})`
-	
+
 	expr, err := parser.ParseExpr(code)
 	if err != nil {
 		t.Fatalf("Failed to parse expression: %v", err)
 	}
-	
+
 	analyzer := NewASTAnalyzer(token.NewFileSet(), true)
 	schema := &SchemaDefinition{
 		Type:       "object",
 		Properties: make(map[string]*SchemaDefinition),
 		Required:   []string{},
 	}
-	
+
 	// Extract the object properties
 	if callExpr, ok := expr.(*ast.CallExpr); ok {
 		if len(callExpr.Args) > 0 {
 			analyzer.extractObjectProperties(callExpr.Args[0], schema)
 		}
 	}
-	
+
 	// Verify properties were extracted
 	if len(schema.Properties) != 4 {
 		t.Errorf("Expected 4 properties, got %d", len(schema.Properties))
 	}
-	
+
 	// Check id property
 	if idProp, exists := schema.Properties["id"]; exists {
 		if idProp.Type != "string" {
@@ -565,7 +563,7 @@ func TestExtractObjectProperties(t *testing.T) {
 	} else {
 		t.Errorf("Expected id property to exist")
 	}
-	
+
 	// Check age property with constraints
 	if ageProp, exists := schema.Properties["age"]; exists {
 		if ageProp.Type != "number" {
@@ -580,7 +578,7 @@ func TestExtractObjectProperties(t *testing.T) {
 	} else {
 		t.Errorf("Expected age property to exist")
 	}
-	
+
 	// Check active property
 	if activeProp, exists := schema.Properties["active"]; exists {
 		if activeProp.Type != "boolean" {
@@ -589,7 +587,7 @@ func TestExtractObjectProperties(t *testing.T) {
 	} else {
 		t.Errorf("Expected active property to exist")
 	}
-	
+
 	// Check tags property
 	if tagsProp, exists := schema.Properties["tags"]; exists {
 		if tagsProp.Type != "array" {
@@ -602,20 +600,20 @@ func TestExtractObjectProperties(t *testing.T) {
 
 func TestMethodChainTraversal(t *testing.T) {
 	code := `operations.NewSimple().GET("/test").Summary("Test").Tags("test", "api").WithBody(schema)`
-	
+
 	expr, err := parser.ParseExpr(code)
 	if err != nil {
 		t.Fatalf("Failed to parse expression: %v", err)
 	}
-	
+
 	analyzer := NewASTAnalyzer(token.NewFileSet(), false)
 	op := &OperationDefinition{
 		Tags: []string{},
 	}
-	
+
 	if callExpr, ok := expr.(*ast.CallExpr); ok {
 		analyzer.traverseMethodChain(callExpr, op)
-		
+
 		// Verify operation was populated
 		if op.Method != "GET" {
 			t.Errorf("Expected method 'GET', got '%s'", op.Method)

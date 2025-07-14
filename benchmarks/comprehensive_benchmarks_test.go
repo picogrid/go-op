@@ -217,13 +217,13 @@ func BenchmarkArrayValidators(b *testing.B) {
 			"age":  validators.Number().Min(0).Required(),
 		}).Required()
 		schema := validators.Array(itemSchema).Required()
-		
+
 		testValue := []map[string]interface{}{
 			{"id": "1", "name": "John", "age": 30},
 			{"id": "2", "name": "Jane", "age": 25},
 			{"id": "3", "name": "Bob", "age": 35},
 		}
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -260,13 +260,13 @@ func BenchmarkObjectValidators(b *testing.B) {
 			"email": validators.Email(),
 			"age":   validators.Number().Min(0).Required(),
 		}).Required()
-		
+
 		testValue := map[string]interface{}{
 			"name":  "John Doe",
 			"email": "john@example.com",
 			"age":   30,
 		}
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -287,7 +287,7 @@ func BenchmarkObjectValidators(b *testing.B) {
 			"updatedAt": validators.String().Required(),
 			"metadata":  validators.Object(map[string]interface{}{}).Optional(),
 		}).Required()
-		
+
 		testValue := map[string]interface{}{
 			"id":        "usr123",
 			"username":  "johndoe",
@@ -300,7 +300,7 @@ func BenchmarkObjectValidators(b *testing.B) {
 			"updatedAt": "2024-01-15",
 			"metadata":  map[string]interface{}{},
 		}
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -319,7 +319,7 @@ func BenchmarkObjectValidators(b *testing.B) {
 				"language": validators.String().Optional().Default("en"),
 			}).Optional(),
 		}).Required()
-		
+
 		testValue := map[string]interface{}{
 			"user": map[string]interface{}{
 				"name":  "John Doe",
@@ -330,7 +330,7 @@ func BenchmarkObjectValidators(b *testing.B) {
 				"language": "en",
 			},
 		}
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -342,27 +342,27 @@ func BenchmarkObjectValidators(b *testing.B) {
 		level5 := validators.Object(map[string]interface{}{
 			"value": validators.String().Required(),
 		}).Required()
-		
+
 		level4 := validators.Object(map[string]interface{}{
 			"nested": level5,
 			"data":   validators.String().Required(),
 		}).Required()
-		
+
 		level3 := validators.Object(map[string]interface{}{
 			"nested": level4,
 			"data":   validators.String().Required(),
 		}).Required()
-		
+
 		level2 := validators.Object(map[string]interface{}{
 			"nested": level3,
 			"data":   validators.String().Required(),
 		}).Required()
-		
+
 		schema := validators.Object(map[string]interface{}{
 			"nested": level2,
 			"data":   validators.String().Required(),
 		}).Required()
-		
+
 		testValue := map[string]interface{}{
 			"data": "level1",
 			"nested": map[string]interface{}{
@@ -378,7 +378,7 @@ func BenchmarkObjectValidators(b *testing.B) {
 				},
 			},
 		}
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -392,12 +392,12 @@ func BenchmarkObjectValidators(b *testing.B) {
 			"email": validators.String().Optional(),
 			"age":   validators.Number().Optional(),
 		}).Partial().Required()
-		
+
 		testValue := map[string]interface{}{
 			"name": "John Doe",
 			// email and age are omitted
 		}
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -410,13 +410,13 @@ func BenchmarkObjectValidators(b *testing.B) {
 			"name":  validators.String().Required(),
 			"email": validators.Email(),
 		}).Strict().Required()
-		
+
 		testValue := map[string]interface{}{
 			"name":  "John Doe",
 			"email": "john@example.com",
 			// No extra fields
 		}
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -445,14 +445,14 @@ func BenchmarkErrorHandling(b *testing.B) {
 			"password": validators.String().Min(8).Required(),
 			"age":      validators.Number().Min(18).Max(120).Integer().Required(),
 		}).Required()
-		
+
 		invalidData := map[string]interface{}{
-			"username": "u",              // Too short
-			"email":    "invalid-email",  // Invalid format
-			"password": "weak",           // Too short
-			"age":      150,              // Too high
+			"username": "u",             // Too short
+			"email":    "invalid-email", // Invalid format
+			"password": "weak",          // Too short
+			"age":      150,             // Too high
 		}
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -470,16 +470,16 @@ func BenchmarkErrorHandling(b *testing.B) {
 				}).Required(),
 			}).Required(),
 		}).Required()
-		
+
 		invalidData := map[string]interface{}{
 			"user": map[string]interface{}{
 				"profile": map[string]interface{}{
-					"name":  "",               // Empty
-					"email": "not-an-email",  // Invalid
+					"name":  "",             // Empty
+					"email": "not-an-email", // Invalid
 				},
 			},
 		}
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -494,14 +494,14 @@ func BenchmarkErrorHandling(b *testing.B) {
 			Max(20).WithMaxLengthMessage("Cannot exceed {max} characters").
 			Pattern(`^[a-zA-Z0-9_]+$`).WithPatternMessage("Only alphanumeric and underscore allowed").
 			Required().WithRequiredMessage("This field is required")
-		
+
 		testValues := []string{
-			"ab",                      // Too short
+			"ab",                               // Too short
 			"verylongusernamethatexceedslimit", // Too long
-			"invalid-chars!",          // Pattern mismatch
-			"",                        // Empty
+			"invalid-chars!",                   // Pattern mismatch
+			"",                                 // Empty
 		}
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -532,7 +532,7 @@ func BenchmarkMixedScenarios(b *testing.B) {
 				"theme":      validators.String().Optional().Default("light"),
 			}).Optional(),
 		}).Required()
-		
+
 		validData := map[string]interface{}{
 			"username": "john_doe_123",
 			"email":    "john@example.com",
@@ -548,7 +548,7 @@ func BenchmarkMixedScenarios(b *testing.B) {
 				"theme":      "dark",
 			},
 		}
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -563,13 +563,13 @@ func BenchmarkMixedScenarios(b *testing.B) {
 			"state":      validators.String().Min(2).Max(2).Required(),
 			"postalCode": validators.String().Pattern(`^\d{5}$`).Required(),
 		}).Required()
-		
+
 		itemSchema := validators.Object(map[string]interface{}{
 			"productId": validators.String().Required(),
 			"quantity":  validators.Number().Min(1).Integer().Required(),
 			"price":     validators.Number().Min(0).Required(),
 		}).Required()
-		
+
 		schema := validators.Object(map[string]interface{}{
 			"orderId":    validators.String().Required(),
 			"customerId": validators.String().Required(),
@@ -580,7 +580,7 @@ func BenchmarkMixedScenarios(b *testing.B) {
 			"tax":        validators.Number().Min(0).Required(),
 			"status":     validators.String().Pattern(`^(pending|processing|shipped|delivered)$`).Required(),
 		}).Required()
-		
+
 		validOrder := map[string]interface{}{
 			"orderId":    "ORD-12345",
 			"customerId": "CUST-67890",
@@ -604,7 +604,7 @@ func BenchmarkMixedScenarios(b *testing.B) {
 			"tax":    8.80,
 			"status": "pending",
 		}
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -617,7 +617,7 @@ func BenchmarkMixedScenarios(b *testing.B) {
 func BenchmarkComprehensiveConcurrentValidation(b *testing.B) {
 	schema := validators.String().Min(3).Max(50).Required()
 	testValue := "concurrent_test"
-	
+
 	b.Run("Sequential", func(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
@@ -625,7 +625,7 @@ func BenchmarkComprehensiveConcurrentValidation(b *testing.B) {
 			_ = schema.Validate(testValue)
 		}
 	})
-	
+
 	b.Run("Parallel", func(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()

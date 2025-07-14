@@ -10,7 +10,8 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/picogrid/go-op"
+
+	goop "github.com/picogrid/go-op"
 )
 
 // Mock Generator for testing
@@ -69,21 +70,22 @@ func TestNewRouter(t *testing.T) {
 	t.Run("Create router with valid engine", func(t *testing.T) {
 		engine := createTestEngine()
 		generator := &mockGenerator{}
-		
+
 		router := NewRouter(engine, generator)
-		
+
 		if router == nil {
 			t.Error("Expected router to be created")
+			return
 		}
-		
+
 		if router.engine != engine {
 			t.Error("Expected engine to be set correctly")
 		}
-		
+
 		if len(router.generators) != 1 {
 			t.Errorf("Expected 1 generator, got %d", len(router.generators))
 		}
-		
+
 		if len(router.operations) != 0 {
 			t.Errorf("Expected empty operations slice, got %d operations", len(router.operations))
 		}
@@ -93,9 +95,9 @@ func TestNewRouter(t *testing.T) {
 		engine := createTestEngine()
 		gen1 := &mockGenerator{}
 		gen2 := &mockGenerator{}
-		
+
 		router := NewRouter(engine, gen1, gen2)
-		
+
 		if len(router.generators) != 2 {
 			t.Errorf("Expected 2 generators, got %d", len(router.generators))
 		}
@@ -103,9 +105,9 @@ func TestNewRouter(t *testing.T) {
 
 	t.Run("Create router with no generators", func(t *testing.T) {
 		engine := createTestEngine()
-		
+
 		router := NewRouter(engine)
-		
+
 		if len(router.generators) != 0 {
 			t.Errorf("Expected 0 generators, got %d", len(router.generators))
 		}
@@ -113,13 +115,13 @@ func TestNewRouter(t *testing.T) {
 
 	t.Run("Create router with nil engine", func(t *testing.T) {
 		generator := &mockGenerator{}
-		
+
 		router := NewRouter(nil, generator)
-		
+
 		if router.engine != nil {
 			t.Error("Expected engine to be nil")
 		}
-		
+
 		// Should not panic, just store nil engine
 		if len(router.generators) != 1 {
 			t.Errorf("Expected 1 generator, got %d", len(router.generators))
@@ -877,7 +879,7 @@ func TestServeSpec(t *testing.T) {
 
 		// Register some operations
 		handler := func(c *gin.Context) {}
-		
+
 		ops := []CompiledOperation{
 			{
 				Method:      "GET",

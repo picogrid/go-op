@@ -2,8 +2,8 @@ package validators
 
 import (
 	"testing"
-	
-	"github.com/picogrid/go-op"
+
+	goop "github.com/picogrid/go-op"
 )
 
 // TestObjectValidation tests object schema validation
@@ -131,7 +131,7 @@ func TestObjectValidation(t *testing.T) {
 
 		// Still validate provided fields
 		invalidPartialData := map[string]interface{}{
-			"name": "",    // Invalid
+			"name": "", // Invalid
 			"age":  25,
 		}
 
@@ -255,7 +255,7 @@ func TestObjectCustomMessages(t *testing.T) {
 		}).Strict().Required()
 
 		invalidData := map[string]interface{}{
-			"name": "John",
+			"name":  "John",
 			"extra": "field",
 		}
 
@@ -336,10 +336,8 @@ func TestBoolValidation(t *testing.T) {
 		// Invalid case - false
 		if err := schema.Validate(false); err == nil {
 			t.Error("Expected false to fail custom validation")
-		} else {
-			if !contains(err.Error(), "Must agree to terms") {
-				t.Errorf("Expected custom error message, got: %v", err)
-			}
+		} else if !contains(err.Error(), "Must agree to terms") {
+			t.Errorf("Expected custom error message, got: %v", err)
 		}
 	})
 }

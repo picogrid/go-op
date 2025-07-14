@@ -4,21 +4,21 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/picogrid/go-op"
+	goop "github.com/picogrid/go-op"
 )
 
 // Core array schema struct (unexported)
 // This contains all the validation configuration and is wrapped by state-specific types
 type arraySchema struct {
-	elementSchema    interface{}
-	minItems         int
-	maxItems         int
-	contains         interface{}
-	customFunc       func([]interface{}) error
-	required         bool
-	optional         bool
-	defaultValue     []interface{}
-	customError      map[string]string
+	elementSchema interface{}
+	minItems      int
+	maxItems      int
+	contains      interface{}
+	customFunc    func([]interface{}) error
+	required      bool
+	optional      bool
+	defaultValue  []interface{}
+	customError   map[string]string
 }
 
 // State wrapper types for compile-time safety
@@ -91,31 +91,31 @@ func (a *arraySchema) WithContainsMessage(message string) ArrayBuilder {
 // These methods return RequiredArrayBuilder to maintain the required state
 
 func (r *requiredArraySchema) MinItems(count int) RequiredArrayBuilder {
-	r.arraySchema.minItems = count
+	r.minItems = count
 	return r
 }
 
 func (r *requiredArraySchema) MaxItems(count int) RequiredArrayBuilder {
-	r.arraySchema.maxItems = count
+	r.maxItems = count
 	return r
 }
 
 func (r *requiredArraySchema) Contains(value interface{}) RequiredArrayBuilder {
-	r.arraySchema.contains = value
+	r.contains = value
 	return r
 }
 
 func (r *requiredArraySchema) Custom(fn func([]interface{}) error) RequiredArrayBuilder {
-	r.arraySchema.customFunc = fn
+	r.customFunc = fn
 	return r
 }
 
 // Error message methods for RequiredArrayBuilder
 func (r *requiredArraySchema) WithMessage(validationType, message string) RequiredArrayBuilder {
-	if r.arraySchema.customError == nil {
-		r.arraySchema.customError = make(map[string]string)
+	if r.customError == nil {
+		r.customError = make(map[string]string)
 	}
-	r.arraySchema.customError[validationType] = message
+	r.customError[validationType] = message
 	return r
 }
 
@@ -139,37 +139,37 @@ func (r *requiredArraySchema) WithRequiredMessage(message string) RequiredArrayB
 // These methods return OptionalArrayBuilder to maintain the optional state
 
 func (o *optionalArraySchema) MinItems(count int) OptionalArrayBuilder {
-	o.arraySchema.minItems = count
+	o.minItems = count
 	return o
 }
 
 func (o *optionalArraySchema) MaxItems(count int) OptionalArrayBuilder {
-	o.arraySchema.maxItems = count
+	o.maxItems = count
 	return o
 }
 
 func (o *optionalArraySchema) Contains(value interface{}) OptionalArrayBuilder {
-	o.arraySchema.contains = value
+	o.contains = value
 	return o
 }
 
 func (o *optionalArraySchema) Custom(fn func([]interface{}) error) OptionalArrayBuilder {
-	o.arraySchema.customFunc = fn
+	o.customFunc = fn
 	return o
 }
 
 // Default is only available on optional builders - this is the key DX improvement!
 func (o *optionalArraySchema) Default(value []interface{}) OptionalArrayBuilder {
-	o.arraySchema.defaultValue = value
+	o.defaultValue = value
 	return o
 }
 
 // Error message methods for OptionalArrayBuilder
 func (o *optionalArraySchema) WithMessage(validationType, message string) OptionalArrayBuilder {
-	if o.arraySchema.customError == nil {
-		o.arraySchema.customError = make(map[string]string)
+	if o.customError == nil {
+		o.customError = make(map[string]string)
 	}
-	o.arraySchema.customError[validationType] = message
+	o.customError[validationType] = message
 	return o
 }
 
@@ -187,11 +187,11 @@ func (o *optionalArraySchema) WithContainsMessage(message string) OptionalArrayB
 
 // Validation methods - these are the final methods in the builder chain
 func (r *requiredArraySchema) Validate(data interface{}) error {
-	return r.arraySchema.validate(data)
+	return r.validate(data)
 }
 
 func (o *optionalArraySchema) Validate(data interface{}) error {
-	return o.arraySchema.validate(data)
+	return o.validate(data)
 }
 
 // Core validation logic (shared between required and optional)
@@ -298,42 +298,42 @@ func (a *arraySchema) validateElement(item interface{}) error {
 	switch schema := a.elementSchema.(type) {
 	case *stringSchema:
 		// Create a COPY of the string schema to avoid race conditions
-		schemaCopy := *schema  // This creates a copy of the struct
+		schemaCopy := *schema // This creates a copy of the struct
 		requiredSchema := &requiredStringSchema{&schemaCopy}
-		requiredSchema.stringSchema.required = true
-		requiredSchema.stringSchema.optional = false
+		requiredSchema.required = true
+		requiredSchema.optional = false
 		return requiredSchema.Validate(item)
-		
+
 	case *numberSchema:
 		// Create a COPY of the number schema to avoid race conditions
-		schemaCopy := *schema  // This creates a copy of the struct
+		schemaCopy := *schema // This creates a copy of the struct
 		requiredSchema := &requiredNumberSchema{&schemaCopy}
-		requiredSchema.numberSchema.required = true
-		requiredSchema.numberSchema.optional = false
+		requiredSchema.required = true
+		requiredSchema.optional = false
 		return requiredSchema.Validate(item)
-		
+
 	case *objectSchema:
 		// Create a COPY of the object schema to avoid race conditions
-		schemaCopy := *schema  // This creates a copy of the struct
+		schemaCopy := *schema // This creates a copy of the struct
 		requiredSchema := &requiredObjectSchema{&schemaCopy}
-		requiredSchema.objectSchema.required = true
-		requiredSchema.objectSchema.optional = false
+		requiredSchema.required = true
+		requiredSchema.optional = false
 		return requiredSchema.Validate(item)
-		
+
 	case *boolSchema:
 		// Create a COPY of the bool schema to avoid race conditions
-		schemaCopy := *schema  // This creates a copy of the struct
+		schemaCopy := *schema // This creates a copy of the struct
 		requiredSchema := &requiredBoolSchema{&schemaCopy}
-		requiredSchema.boolSchema.required = true
-		requiredSchema.boolSchema.optional = false
+		requiredSchema.required = true
+		requiredSchema.optional = false
 		return requiredSchema.Validate(item)
-		
+
 	case *arraySchema:
 		// Create a COPY of the array schema to avoid race conditions
-		schemaCopy := *schema  // This creates a copy of the struct
+		schemaCopy := *schema // This creates a copy of the struct
 		requiredSchema := &requiredArraySchema{&schemaCopy}
-		requiredSchema.arraySchema.required = true
-		requiredSchema.arraySchema.optional = false
+		requiredSchema.required = true
+		requiredSchema.optional = false
 		return requiredSchema.Validate(item)
 	}
 
