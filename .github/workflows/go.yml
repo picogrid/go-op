@@ -167,7 +167,7 @@ jobs:
           git archive --format=tar.gz --prefix=go-op-${GITHUB_REF#refs/tags/}/ HEAD > go-op-${GITHUB_REF#refs/tags/}.tar.gz
 
       - name: Upload release assets
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: release-artifacts
           path: "*.tar.gz"
@@ -228,7 +228,7 @@ jobs:
           fi
 
       - name: Upload generated specs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: generated-openapi-specs
           path: |
