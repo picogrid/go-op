@@ -17,15 +17,15 @@ print_step() {
 }
 
 print_success() {
-    echo -e "${GREEN}✅ $1${NC}"
+    echo -e "${GREEN}[SUCCESS] $1${NC}"
 }
 
 print_warning() {
-    echo -e "${YELLOW}⚠️  $1${NC}"
+    echo -e "${YELLOW}[WARNING] $1${NC}"
 }
 
 print_error() {
-    echo -e "${RED}❌ $1${NC}"
+    echo -e "${RED}[ERROR] $1${NC}"
 }
 
 # Configuration
@@ -220,54 +220,54 @@ for combined_file in "combined-direct.yaml" "combined-config.yaml"; do
     
     # Check OpenAPI version
     if grep -q "openapi: 3.1.0" "$spec_path"; then
-        print_success "✓ Correct OpenAPI version"
+        print_success "Correct OpenAPI version"
     else
-        print_error "✗ Missing OpenAPI 3.1.0 version"
+        print_error "Missing OpenAPI 3.1.0 version"
     fi
     
     # Check API metadata
     if grep -q "title: E-commerce Platform API" "$spec_path"; then
-        print_success "✓ Correct API title"
+        print_success "Correct API title"
     else
-        print_error "✗ Missing or incorrect API title"
+        print_error "Missing or incorrect API title"
     fi
     
     # Check base URL application
     if grep -q "/api/v1/" "$spec_path"; then
         api_path_count=$(grep -c "/api/v1/" "$spec_path")
-        print_success "✓ Base URL applied to $api_path_count paths"
+        print_success "Base URL applied to $api_path_count paths"
     else
-        print_error "✗ Base URL not applied to paths"
+        print_error "Base URL not applied to paths"
     fi
     
     # Check service tags
     if grep -q "service:user" "$spec_path" && grep -q "service:order" "$spec_path" && grep -q "service:notification" "$spec_path"; then
-        print_success "✓ Service tags added to all services"
+        print_success "Service tags added to all services"
     else
-        print_error "✗ Missing service tags"
+        print_error "Missing service tags"
     fi
     
     # Count total operations
     total_operations=$(grep -c "summary:" "$spec_path" || echo "0")
-    print_success "✓ Total operations: $total_operations"
+    print_success "Total operations: $total_operations"
     
     # Count total paths
     total_paths=$(grep -c "  /api/v1/" "$spec_path" || echo "0")
-    print_success "✓ Total paths: $total_paths"
+    print_success "Total paths: $total_paths"
     
     # Verify all three services are present
     user_paths=$(grep -c "/api/v1/users" "$spec_path" || echo "0")
     order_paths=$(grep -c "/api/v1/orders" "$spec_path" || echo "0")
     notification_paths=$(grep -c "/api/v1/notifications" "$spec_path" || echo "0")
     
-    print_success "✓ User service paths: $user_paths"
-    print_success "✓ Order service paths: $order_paths"  
-    print_success "✓ Notification service paths: $notification_paths"
+    print_success "User service paths: $user_paths"
+    print_success "Order service paths: $order_paths"  
+    print_success "Notification service paths: $notification_paths"
     
     if [ "$user_paths" -gt 0 ] && [ "$order_paths" -gt 0 ] && [ "$notification_paths" -gt 0 ]; then
-        print_success "✓ All services successfully combined"
+        print_success "All services successfully combined"
     else
-        print_error "✗ Some services missing from combined spec"
+        print_error "Some services missing from combined spec"
     fi
 done
 
@@ -289,9 +289,9 @@ if ./go-op-cli combine \
     # Validate JSON syntax
     if command -v jq >/dev/null 2>&1; then
         if jq . ./output/combined.json >/dev/null 2>&1; then
-            print_success "✓ Valid JSON syntax"
+            print_success "Valid JSON syntax"
         else
-            print_error "✗ Invalid JSON syntax"
+            print_error "Invalid JSON syntax"
         fi
     else
         print_warning "jq not available - skipping JSON validation"
@@ -318,9 +318,9 @@ if ./go-op-cli combine \
     orders_paths=$(grep -c "/orders" "./output/combined-users-only.yaml" || echo "0")
     
     if [ "$users_only_paths" -gt 0 ] && [ "$orders_paths" -eq 0 ]; then
-        print_success "✓ Tag filtering working - only users operations included"
+        print_success "Tag filtering working - only users operations included"
     else
-        print_warning "⚠ Tag filtering may not be working as expected"
+        print_warning "Tag filtering may not be working as expected"
     fi
 else
     print_warning "Tag filtering test failed"
@@ -343,9 +343,9 @@ if ./go-op-cli combine \
     if grep -q "/user-api/" "./output/combined-prefixed.yaml" && 
        grep -q "/order-api/" "./output/combined-prefixed.yaml" && 
        grep -q "/notify-api/" "./output/combined-prefixed.yaml"; then
-        print_success "✓ Service prefix mapping working"
+        print_success "Service prefix mapping working"
     else
-        print_warning "⚠ Service prefix mapping may not be working as expected"
+        print_warning "Service prefix mapping may not be working as expected"
     fi
 else
     print_warning "Service prefix mapping test failed"
@@ -356,28 +356,28 @@ print_step "Step 9: Generate Summary Report"
 echo
 echo "=== GO-OP CLI MICROSERVICES TEST SUMMARY ==="
 echo
-echo "📊 Individual Service Specs:"
-echo "   User Service:         $([ -f ./output/user-service.yaml ] && echo "✅ Generated" || echo "❌ Failed")"
-echo "   Order Service:        $([ -f ./output/order-service.yaml ] && echo "✅ Generated" || echo "❌ Failed")"
-echo "   Notification Service: $([ -f ./output/notification-service.yaml ] && echo "✅ Generated" || echo "❌ Failed")"
+echo "Individual Service Specs:"
+echo "   User Service:         $([ -f ./output/user-service.yaml ] && echo "Generated" || echo "Failed")"
+echo "   Order Service:        $([ -f ./output/order-service.yaml ] && echo "Generated" || echo "Failed")"
+echo "   Notification Service: $([ -f ./output/notification-service.yaml ] && echo "Generated" || echo "Failed")"
 echo
-echo "🔗 Combined Specifications:"
-echo "   Direct file method:   $([ -f ./output/combined-direct.yaml ] && echo "✅ Generated" || echo "❌ Failed")"
-echo "   Config file method:   $([ -f ./output/combined-config.yaml ] && echo "✅ Generated" || echo "❌ Failed")"
-echo "   JSON format:          $([ -f ./output/combined.json ] && echo "✅ Generated" || echo "❌ Failed")"
+echo "Combined Specifications:"
+echo "   Direct file method:   $([ -f ./output/combined-direct.yaml ] && echo "Generated" || echo "Failed")"
+echo "   Config file method:   $([ -f ./output/combined-config.yaml ] && echo "Generated" || echo "Failed")"
+echo "   JSON format:          $([ -f ./output/combined.json ] && echo "Generated" || echo "Failed")"
 echo
-echo "🧪 Advanced Features:"
-echo "   Tag filtering:        $([ -f ./output/combined-users-only.yaml ] && echo "✅ Tested" || echo "❌ Failed")"
-echo "   Service prefixes:     $([ -f ./output/combined-prefixed.yaml ] && echo "✅ Tested" || echo "❌ Failed")"
+echo "Advanced Features:"
+echo "   Tag filtering:        $([ -f ./output/combined-users-only.yaml ] && echo "Tested" || echo "Failed")"
+echo "   Service prefixes:     $([ -f ./output/combined-prefixed.yaml ] && echo "Tested" || echo "Failed")"
 echo
-echo "📁 Output files located in: $OUTPUT_DIR"
+echo "Output files located in: $OUTPUT_DIR"
 echo
 if [ -f ./output/combined-direct.yaml ]; then
     total_lines=$(wc -l < ./output/combined-direct.yaml)
     total_paths=$(grep -c "  /api/v1/" ./output/combined-direct.yaml || echo "0")
     total_operations=$(grep -c "summary:" ./output/combined-direct.yaml || echo "0")
     
-    echo "📈 Combined API Statistics:"
+    echo "Combined API Statistics:"
     echo "   Total lines:      $total_lines"
     echo "   Total paths:      $total_paths"
     echo "   Total operations: $total_operations"
@@ -385,10 +385,10 @@ if [ -f ./output/combined-direct.yaml ]; then
     echo "   Services:         3 (user, order, notification)"
 fi
 
-print_success "All tests completed successfully! 🎉"
+print_success "All tests completed successfully!"
 
 echo
-echo "💡 Next steps:"
+echo "Next steps:"
 echo "   1. View the generated specs: ls -la ./output/"
 echo "   2. Validate with external tools: swagger-codegen, redoc-cli, etc."
 echo "   3. Import into API gateway tools: Kong, Nginx, Traefik"

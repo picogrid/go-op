@@ -40,6 +40,7 @@ make fmt                # Format code with gofumpt
 
 # Quality assurance
 make lint               # Run golangci-lint
+make lint-fix           # Run golangci-lint with automatic fixes
 make security           # Run security checks (gosec, nancy)
 make pre-commit         # Full pre-commit validation
 make ci-test           # Simulate CI environment
@@ -48,6 +49,7 @@ make ci-test           # Simulate CI environment
 make benchmark          # Run performance benchmarks
 make benchmark-cpu      # CPU profiling benchmarks
 make benchmark-mem      # Memory profiling benchmarks
+make benchmark-compare  # Save benchmarks for comparison
 ```
 
 ### Direct Go Commands
@@ -268,6 +270,22 @@ operation := operations.NewSimple().
 - **Performance tests**: Benchmarks in `/benchmarks/` with regression detection
 - **Race condition testing**: `make test-race` for concurrent safety
 - **AST analysis testing**: Verify schema extraction accuracy
+- **OpenAPI validation**: External validation using Redocly CLI
+- **Multi-platform builds**: Verify compilation across OS/architecture combinations
+
+### Comprehensive Testing Workflow
+```bash
+# Full end-to-end testing
+./scripts/test-microservices.sh  # Tests complete CLI workflow with 3 services
+
+# The script tests:
+# 1. Individual service spec generation
+# 2. Spec validation and structure verification
+# 3. Multi-service combination (direct files and config)
+# 4. JSON output format
+# 5. Advanced features (tag filtering, service prefixes)
+# 6. Generated spec validation
+```
 
 ## Development Guidelines
 
@@ -277,6 +295,54 @@ operation := operations.NewSimple().
 4. **Schema Evolution**: Ensure backward compatibility in OpenAPI output
 5. **Performance**: Benchmark any changes affecting validation hot paths
 6. **Microservices**: Test multi-service combination scenarios
+
+## Build System & Development Environment
+
+### Makefile Targets
+The comprehensive Makefile provides organized development workflows:
+
+```bash
+# Essential development workflow
+make dev-setup          # First-time setup: install tools, dependencies
+make quick-check        # Fast feedback loop: fmt + vet + test
+make pre-commit         # Pre-commit validation: quality + tests + OpenAPI
+make ci-test           # Full CI simulation
+
+# Code quality
+make fmt               # Format with gofumpt
+make lint              # Run golangci-lint
+make lint-fix          # Auto-fix linting issues
+make security          # Security analysis (gosec + nancy)
+make quality-check     # All quality checks combined
+
+# Testing
+make test              # Basic test suite
+make test-all          # Complete testing: unit + race + coverage
+make test-examples     # Test example services
+make benchmark         # Performance benchmarks
+make benchmark-compare # Benchmark comparison with baseline
+
+# OpenAPI validation
+make validate-openapi       # Full validation with external tools
+make validate-openapi-quick # Quick Redocly validation
+
+# Maintenance
+make clean             # Clean build artifacts
+make tidy              # Clean dependencies and format
+make deps-update       # Update all dependencies
+```
+
+### Required Tools
+```bash
+# Go tools (installed via make install-tools)
+gofumpt                # Enhanced Go formatting
+golangci-lint         # Comprehensive linting
+gosec                 # Security analysis
+nancy                 # Dependency vulnerability scanning
+
+# External tools
+npm install -g @redocly/cli  # OpenAPI validation
+```
 
 ### Adding New Validator Types
 1. Create interfaces in `*_interfaces.go` following the builder pattern
@@ -324,8 +390,17 @@ go test ./validators -v
 # Test with race detection
 go test ./operations -race -v
 
+# Test specific function
+go test ./validators -run TestStringValidation -v
+go test ./operations -run TestNewRouter -v
+
 # Run benchmarks
 go test -bench=BenchmarkStringValidation ./benchmarks -benchmem
+go test -bench=. ./benchmarks -benchmem
+
+# Test examples
+make test-examples
+make examples-test  # Test compilation only
 ```
 
 ### Debugging CLI Tool
@@ -347,16 +422,22 @@ go run ./examples/notification-service/main.go # Port 8003
 # Test API endpoints
 curl -X GET http://localhost:8001/health
 curl -X POST http://localhost:8001/users -H "Content-Type: application/json" -d '{"email":"test@example.com","username":"testuser","first_name":"Test","last_name":"User","age":25,"password":"password123"}'
+
+# OpenAPI validation
+make validate-openapi           # Full validation with external tools
+make validate-openapi-quick     # Quick validation using Redocly
 ```
 
 ## Code Quality Standards
 
 - **Formatting**: gofumpt (stricter than gofmt)
-- **Linting**: golangci-lint with comprehensive rules  
+- **Linting**: golangci-lint with comprehensive rules configured in `.golangci.yml`
 - **Security**: gosec static analysis, nancy dependency scanning
 - **Testing**: High coverage with race detection
 - **Performance**: Benchmark-driven development with regression detection
 - **OpenAPI Compliance**: Full OpenAPI 3.1 specification adherence
+- **Build System**: Comprehensive Makefile with development workflow targets
+- **CI/CD**: GitHub Actions for validation, multi-platform builds
 
 ## Troubleshooting
 
@@ -367,3 +448,6 @@ curl -X POST http://localhost:8001/users -H "Content-Type: application/json" -d 
 3. **AST parsing fails**: Check that validator schemas are defined as variables, not inline
 4. **Test failures**: Run `go mod tidy` and ensure all dependencies are up to date
 5. **Lint errors**: Use format strings in fmt.Errorf: `fmt.Errorf("%s", msg)` instead of `fmt.Errorf(msg)`
+6. **OpenAPI validation fails**: Install Redocly CLI with `npm install -g @redocly/cli`
+7. **Build tools missing**: Run `make install-tools` to install required development tools
+8. **Performance regression**: Use `make benchmark-compare` to compare with baseline

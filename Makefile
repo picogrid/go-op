@@ -1,6 +1,6 @@
 # Makefile for go-op development and maintenance
 
-.PHONY: help build test test-verbose test-race test-coverage benchmark lint fmt clean install-tools dev-setup release-check validate-openapi
+.PHONY: help build test test-verbose test-race test-coverage test-all test-examples benchmark benchmark-cpu benchmark-mem benchmark-compare lint-fix lint fmt vet security quality-check install-tools dev-setup deps-update deps-verify deps-clean docs-generate docs-serve examples-run examples-test validate-openapi validate-openapi-quick clean tidy pre-commit release-check git-hooks-install perf-baseline perf-compare ci-test build-all-platforms quick-check full-check help-detailed version
 
 # Test packages (excluding examples and cmd/example)
 TEST_PACKAGES := $(shell go list ./... | grep -v -E '(cmd/example|examples)')
@@ -16,12 +16,12 @@ help: ## Show this help message
 build: ## Build the library (verify compilation)
 	@echo "Building go-op..."
 	@go build ./...
-	@echo "✓ Build successful"
+	@echo "Build successful"
 
 test: ## Run all tests
 	@echo "Running tests..."
 	@go test $(TEST_PACKAGES)
-	@echo "✓ Tests passed"
+	@echo "Tests passed"
 
 test-verbose: ## Run tests with verbose output
 	@echo "Running tests with verbose output..."
@@ -30,13 +30,13 @@ test-verbose: ## Run tests with verbose output
 test-race: ## Run tests with race detector
 	@echo "Running tests with race detector..."
 	@go test -race $(TEST_PACKAGES)
-	@echo "✓ Race tests passed"
+	@echo "Race tests passed"
 
 test-coverage: ## Run tests with coverage report
 	@echo "Running tests with coverage..."
 	@go test -coverprofile=coverage.out $(TEST_PACKAGES)
 	@go tool cover -html=coverage.out -o coverage.html
-	@echo "✓ Coverage report generated: coverage.html"
+	@echo "Coverage report generated: coverage.html"
 	@go tool cover -func=coverage.out | grep total:
 
 test-all: test test-race test-coverage ## Run all test suites
@@ -44,7 +44,7 @@ test-all: test test-race test-coverage ## Run all test suites
 test-examples: ## Run tests for examples only
 	@echo "Running example tests..."
 	@go test ./examples/... ./cmd/example/...
-	@echo "✓ Example tests passed"
+	@echo "Example tests passed"
 
 # Benchmarking targets
 benchmark: ## Run performance benchmarks
@@ -54,44 +54,44 @@ benchmark: ## Run performance benchmarks
 benchmark-cpu: ## Run CPU profiling benchmarks
 	@echo "Running CPU profiling benchmarks..."
 	@go test -bench=. -benchmem -cpuprofile=cpu.prof ./benchmarks
-	@echo "✓ CPU profile saved to cpu.prof"
+	@echo "CPU profile saved to cpu.prof"
 
 benchmark-mem: ## Run memory profiling benchmarks
 	@echo "Running memory profiling benchmarks..."
 	@go test -bench=. -benchmem -memprofile=mem.prof ./benchmarks
-	@echo "✓ Memory profile saved to mem.prof"
+	@echo "Memory profile saved to mem.prof"
 
 benchmark-compare: ## Run benchmarks and save results for comparison
 	@echo "Running benchmarks for comparison..."
 	@go test -bench=. -benchmem ./benchmarks > benchmark_results.txt
-	@echo "✓ Benchmark results saved to benchmark_results.txt"
+	@echo "Benchmark results saved to benchmark_results.txt"
 
 lint-fix: ## Run golangci-lint
 	@echo "Running linter with fix..."
 	@golangci-lint run --fix --timeout 5m --config=.golangci.yml --issues-exit-code=0
-	@echo "✓ Linting passed"
+	@echo "Linting passed"
 
 # Code quality targets
 lint: ## Run golangci-lint
 	@echo "Running linter..."
 	@golangci-lint run --timeout 5m --config=.golangci.yml --issues-exit-code=0
-	@echo "✓ Linting passed"
+	@echo "Linting passed"
 
 fmt: ## Format code using gofumpt
 	@echo "Formatting code..."
 	@gofumpt -w .
-	@echo "✓ Code formatted"
+	@echo "Code formatted"
 
 vet: ## Run go vet
 	@echo "Running go vet..."
 	@go vet ./...
-	@echo "✓ Vet checks passed"
+	@echo "Vet checks passed"
 
 security: ## Run security checks
 	@echo "Running security checks..."
 	@gosec ./...
 	@go list -json -deps ./... | nancy sleuth
-	@echo "✓ Security checks passed"
+	@echo "Security checks passed"
 
 # Code quality combined
 quality-check: fmt vet lint security ## Run all code quality checks
@@ -105,37 +105,37 @@ install-tools: ## Install development tools
 	@go install github.com/sonatypecommunity/nancy@latest
 	@echo "Installing OpenAPI validation tools..."
 	@npm install -g @redocly/cli
-	@echo "✓ Development tools installed"
+	@echo "Development tools installed"
 
 dev-setup: install-tools ## Set up development environment
 	@echo "Setting up development environment..."
 	@go mod download
 	@go mod tidy
-	@echo "✓ Development environment ready"
+	@echo "Development environment ready"
 
 # Dependencies management
 deps-update: ## Update dependencies
 	@echo "Updating dependencies..."
 	@go get -u ./...
 	@go mod tidy
-	@echo "✓ Dependencies updated"
+	@echo "Dependencies updated"
 
 deps-verify: ## Verify dependencies
 	@echo "Verifying dependencies..."
 	@go mod verify
-	@echo "✓ Dependencies verified"
+	@echo "Dependencies verified"
 
 deps-clean: ## Clean module cache
 	@echo "Cleaning module cache..."
 	@go clean -modcache
-	@echo "✓ Module cache cleaned"
+	@echo "Module cache cleaned"
 
 # Documentation
 docs-generate: ## Generate documentation
 	@echo "Generating documentation..."
 	@mkdir -p docs
 	@go doc -all ./go-op > docs/api.md
-	@echo "✓ Documentation generated in docs/api.md"
+	@echo "Documentation generated in docs/api.md"
 
 docs-serve: ## Serve documentation locally (requires godoc)
 	@echo "Serving documentation at http://localhost:6060"
@@ -150,18 +150,18 @@ examples-run: ## Run all examples
 	@cd examples/order-service && go run main.go
 	@echo "Running user service example..."
 	@cd examples/user-service && go run main.go
-	@echo "✓ Examples completed"
+	@echo "Examples completed"
 
 examples-test: ## Test that examples compile
 	@echo "Testing examples compilation..."
 	@go build ./examples/...
-	@echo "✓ Examples compile successfully"
+	@echo "Examples compile successfully"
 
 # OpenAPI validation
 validate-openapi: ## Validate OpenAPI specifications locally
 	@echo "Running local OpenAPI validation..."
 	@./scripts/validate-openapi-local.sh
-	@echo "✓ OpenAPI validation completed"
+	@echo "OpenAPI validation completed"
 
 validate-openapi-quick: ## Quick OpenAPI validation (minimal rules)
 	@echo "Running quick OpenAPI validation..."
@@ -180,7 +180,7 @@ validate-openapi-quick: ## Quick OpenAPI validation (minimal rules)
 	@mkdir -p generated-specs
 	@./go-op-cli generate -i ./examples/user-service -o ./generated-specs/user-service.yaml -t "User Service API" -V "1.0.0"
 	@redocly lint ./generated-specs/user-service.yaml --config redocly.yaml
-	@echo "✓ Quick OpenAPI validation completed"
+	@echo "Quick OpenAPI validation completed"
 
 # Maintenance and cleanup
 clean: ## Clean build artifacts and temporary files
@@ -192,17 +192,17 @@ clean: ## Clean build artifacts and temporary files
 	@rm -f go-op-cli
 	@rm -rf generated-specs
 	@rm -rf docs/api-docs.html
-	@echo "✓ Cleanup completed"
+	@echo "Cleanup completed"
 
 tidy: ## Tidy up go.mod and format code
 	@echo "Tidying up..."
 	@go mod tidy
 	@$(MAKE) fmt
-	@echo "✓ Tidying completed"
+	@echo "Tidying completed"
 
 # Release preparation
 pre-commit: quality-check test-all validate-openapi-quick ## Run all checks before committing
-	@echo "✓ Pre-commit checks passed"
+	@echo "Pre-commit checks passed"
 
 release-check: ## Verify project is ready for release
 	@echo "Checking release readiness..."
@@ -211,20 +211,20 @@ release-check: ## Verify project is ready for release
 	@$(MAKE) benchmark
 	@$(MAKE) examples-test
 	@$(MAKE) validate-openapi
-	@echo "✓ Project is ready for release"
+	@echo "Project is ready for release"
 
 # Git hooks
 git-hooks-install: ## Install git hooks
 	@echo "Installing git hooks..."
 	@echo '#!/bin/sh\nmake pre-commit' > .git/hooks/pre-commit
 	@chmod +x .git/hooks/pre-commit
-	@echo "✓ Git hooks installed"
+	@echo "Git hooks installed"
 
 # Performance monitoring
 perf-baseline: ## Create performance baseline
 	@echo "Creating performance baseline..."
 	@go test -bench=. -benchmem ./benchmarks > perf_baseline.txt
-	@echo "✓ Performance baseline saved to perf_baseline.txt"
+	@echo "Performance baseline saved to perf_baseline.txt"
 
 perf-compare: ## Compare current performance with baseline
 	@echo "Comparing performance with baseline..."
@@ -246,29 +246,29 @@ ci-test: ## Simulate CI environment testing
 	@$(MAKE) test-all
 	@$(MAKE) benchmark
 	@$(MAKE) validate-openapi
-	@echo "✓ CI simulation completed successfully"
+	@echo "CI simulation completed successfully"
 
 # Multi-platform build verification
 build-all-platforms: ## Build for multiple platforms
 	@echo "Building for multiple platforms..."
 	@GOOS=linux GOARCH=amd64 go build ./...
-	@echo "✓ Linux/amd64 build successful"
+	@echo "Linux/amd64 build successful"
 	@GOOS=linux GOARCH=arm64 go build ./...
-	@echo "✓ Linux/arm64 build successful"
+	@echo "Linux/arm64 build successful"
 	@GOOS=windows GOARCH=amd64 go build ./...
-	@echo "✓ Windows/amd64 build successful"
+	@echo "Windows/amd64 build successful"
 	@GOOS=darwin GOARCH=amd64 go build ./...
-	@echo "✓ macOS/amd64 build successful"
+	@echo "macOS/amd64 build successful"
 	@GOOS=darwin GOARCH=arm64 go build ./...
-	@echo "✓ macOS/arm64 build successful"
-	@echo "✓ All platform builds successful"
+	@echo "macOS/arm64 build successful"
+	@echo "All platform builds successful"
 
 # Development workflow helpers
 quick-check: fmt vet test ## Quick development check
-	@echo "✓ Quick check completed"
+	@echo "Quick check completed"
 
 full-check: clean quality-check test-all benchmark ## Comprehensive check
-	@echo "✓ Full check completed"
+	@echo "Full check completed"
 
 # Help target (detailed)
 help-detailed: ## Show detailed help with examples
