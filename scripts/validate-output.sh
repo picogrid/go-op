@@ -16,7 +16,7 @@ print_error() { echo -e "${RED}❌ $1${NC}"; }
 
 print_step "Validating Combined OpenAPI Specification"
 
-COMBINED_FILE="./output/test-combined.yaml"
+COMBINED_FILE="./output/combined-direct.yaml"
 
 if [ ! -f "$COMBINED_FILE" ]; then
     print_error "Combined file not found: $COMBINED_FILE"
