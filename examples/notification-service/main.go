@@ -407,7 +407,122 @@ func listTemplatesHandler(ctx context.Context, params struct{}, query ListTempla
 
 func main() {
 	engine := gin.Default()
+
+	// Create OpenAPI generator with enhanced metadata
 	openAPIGen := operations.NewOpenAPIGenerator("Notification Service API", "2.1.0")
+
+	// Demonstrate OpenAPI 3.1 Fixed Fields features
+	openAPIGen.SetDescription("A comprehensive multi-channel notification service with template management, bulk messaging, analytics, and advanced filtering capabilities")
+	openAPIGen.SetSummary("Multi-Channel Notification & Messaging API")
+	openAPIGen.SetTermsOfService("https://messaging.example.com/terms")
+
+	// Enhanced contact information
+	openAPIGen.SetContact(&operations.OpenAPIContact{
+		Name:  "Messaging Platform Team",
+		Email: "notifications@example.com",
+		URL:   "https://messaging.example.com/support",
+	})
+
+	// License information
+	openAPIGen.SetLicense(&operations.OpenAPILicense{
+		Name: "Apache 2.0",
+		URL:  "https://www.apache.org/licenses/LICENSE-2.0.html",
+	})
+
+	// Global tags with external documentation
+	openAPIGen.AddTag(operations.OpenAPITag{
+		Name:        "notifications",
+		Description: "Core notification operations including sending, retrieving, and status management",
+		ExternalDocs: &operations.OpenAPIExternalDocs{
+			Description: "Notification API documentation",
+			URL:         "https://docs.example.com/notifications",
+		},
+	})
+
+	openAPIGen.AddTag(operations.OpenAPITag{
+		Name:        "messaging",
+		Description: "Multi-channel messaging operations (email, SMS, push notifications)",
+		ExternalDocs: &operations.OpenAPIExternalDocs{
+			Description: "Messaging channels guide",
+			URL:         "https://docs.example.com/messaging",
+		},
+	})
+
+	openAPIGen.AddTag(operations.OpenAPITag{
+		Name:        "bulk",
+		Description: "Bulk messaging operations for sending to multiple recipients",
+	})
+
+	openAPIGen.AddTag(operations.OpenAPITag{
+		Name:        "templates",
+		Description: "Notification template management for reusable message formats",
+		ExternalDocs: &operations.OpenAPIExternalDocs{
+			Description: "Template system documentation",
+			URL:         "https://docs.example.com/templates",
+		},
+	})
+
+	openAPIGen.AddTag(operations.OpenAPITag{
+		Name:        "analytics",
+		Description: "Notification analytics, statistics, and performance metrics",
+		ExternalDocs: &operations.OpenAPIExternalDocs{
+			Description: "Analytics API documentation",
+			URL:         "https://docs.example.com/analytics",
+		},
+	})
+
+	openAPIGen.AddTag(operations.OpenAPITag{
+		Name:        "filtering",
+		Description: "Advanced filtering and search operations",
+	})
+
+	openAPIGen.AddTag(operations.OpenAPITag{
+		Name:        "status",
+		Description: "Notification status tracking and management",
+	})
+
+	openAPIGen.AddTag(operations.OpenAPITag{
+		Name:        "statistics",
+		Description: "Statistical data and reporting operations",
+	})
+
+	openAPIGen.AddTag(operations.OpenAPITag{
+		Name:        "reporting",
+		Description: "Business intelligence and reporting features",
+	})
+
+	openAPIGen.AddTag(operations.OpenAPITag{
+		Name:        "management",
+		Description: "Administrative and management operations",
+	})
+
+	// Global external documentation
+	openAPIGen.SetExternalDocs(&operations.OpenAPIExternalDocs{
+		Description: "Complete notification service documentation with integration examples and best practices",
+		URL:         "https://docs.example.com/notification-service",
+	})
+
+	// Server configuration with variables
+	openAPIGen.AddServer(operations.OpenAPIServer{
+		URL:         "https://{region}.notifications.example.com/{version}",
+		Description: "Notification service with regional deployment and API versioning",
+		Variables: map[string]operations.OpenAPIServerVariable{
+			"region": {
+				Default:     "us-east-1",
+				Enum:        []string{"us-east-1", "us-west-2", "eu-west-1", "ap-southeast-1"},
+				Description: "AWS region for notification service",
+			},
+			"version": {
+				Default:     "v2",
+				Enum:        []string{"v1", "v2", "v3"},
+				Description: "API version",
+			},
+		},
+	})
+
+	// Set JSON Schema dialect
+	openAPIGen.SetJsonSchemaDialect("https://json-schema.org/draft/2020-12/schema")
+
 	router := operations.NewRouter(engine, openAPIGen)
 
 	// Define complex schemas with nested objects and arrays

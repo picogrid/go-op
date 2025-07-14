@@ -25,45 +25,104 @@ type OpenAPIGenerator struct {
 
 // OpenAPIServer represents a server in the OpenAPI spec
 type OpenAPIServer struct {
-	URL         string `json:"url" yaml:"url"`
-	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+	URL         string                           `json:"url" yaml:"url"`
+	Description string                           `json:"description,omitempty" yaml:"description,omitempty"`
+	Variables   map[string]OpenAPIServerVariable `json:"variables,omitempty" yaml:"variables,omitempty"`
+}
+
+// OpenAPIServerVariable represents a server variable in OpenAPI spec
+type OpenAPIServerVariable struct {
+	Enum        []string `json:"enum,omitempty" yaml:"enum,omitempty"`
+	Default     string   `json:"default" yaml:"default"`
+	Description string   `json:"description,omitempty" yaml:"description,omitempty"`
 }
 
 // OpenAPISpec represents the complete OpenAPI 3.1 specification
 type OpenAPISpec struct {
-	OpenAPI    string                                 `json:"openapi" yaml:"openapi"`
-	Info       OpenAPIInfo                            `json:"info" yaml:"info"`
-	Servers    []OpenAPIServer                        `json:"servers,omitempty" yaml:"servers,omitempty"`
-	Security   []goop.SecurityRequirement             `json:"security,omitempty" yaml:"security,omitempty"`
-	Paths      map[string]map[string]OpenAPIOperation `json:"paths" yaml:"paths"`
-	Components *OpenAPIComponents                     `json:"components,omitempty" yaml:"components,omitempty"`
+	OpenAPI           string                                 `json:"openapi" yaml:"openapi"`
+	Info              OpenAPIInfo                            `json:"info" yaml:"info"`
+	Servers           []OpenAPIServer                        `json:"servers,omitempty" yaml:"servers,omitempty"`
+	Security          []goop.SecurityRequirement             `json:"security,omitempty" yaml:"security,omitempty"`
+	Paths             map[string]map[string]OpenAPIOperation `json:"paths" yaml:"paths"`
+	Components        *OpenAPIComponents                     `json:"components,omitempty" yaml:"components,omitempty"`
+	Tags              []OpenAPITag                           `json:"tags,omitempty" yaml:"tags,omitempty"`
+	ExternalDocs      *OpenAPIExternalDocs                   `json:"externalDocs,omitempty" yaml:"externalDocs,omitempty"`
+	Webhooks          map[string]OpenAPIWebhook              `json:"webhooks,omitempty" yaml:"webhooks,omitempty"`
+	JsonSchemaDialect string                                 `json:"jsonSchemaDialect,omitempty" yaml:"jsonSchemaDialect,omitempty"`
+}
+
+// OpenAPITag represents a tag in OpenAPI spec
+type OpenAPITag struct {
+	Name         string               `json:"name" yaml:"name"`
+	Description  string               `json:"description,omitempty" yaml:"description,omitempty"`
+	ExternalDocs *OpenAPIExternalDocs `json:"externalDocs,omitempty" yaml:"externalDocs,omitempty"`
+}
+
+// OpenAPIWebhook represents a webhook in OpenAPI spec
+type OpenAPIWebhook struct {
+	Operations map[string]OpenAPIOperation `json:"-" yaml:"-"`
 }
 
 // OpenAPIInfo represents the info section of OpenAPI spec
 type OpenAPIInfo struct {
-	Title       string `json:"title" yaml:"title"`
-	Version     string `json:"version" yaml:"version"`
-	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+	Title          string          `json:"title" yaml:"title"`
+	Version        string          `json:"version" yaml:"version"`
+	Description    string          `json:"description,omitempty" yaml:"description,omitempty"`
+	Summary        string          `json:"summary,omitempty" yaml:"summary,omitempty"`
+	TermsOfService string          `json:"termsOfService,omitempty" yaml:"termsOfService,omitempty"`
+	Contact        *OpenAPIContact `json:"contact,omitempty" yaml:"contact,omitempty"`
+	License        *OpenAPILicense `json:"license,omitempty" yaml:"license,omitempty"`
+}
+
+// OpenAPIContact represents contact information for the API
+type OpenAPIContact struct {
+	Name  string `json:"name,omitempty" yaml:"name,omitempty"`
+	URL   string `json:"url,omitempty" yaml:"url,omitempty"`
+	Email string `json:"email,omitempty" yaml:"email,omitempty"`
+}
+
+// OpenAPILicense represents license information for the API
+type OpenAPILicense struct {
+	Name       string `json:"name" yaml:"name"`
+	Identifier string `json:"identifier,omitempty" yaml:"identifier,omitempty"`
+	URL        string `json:"url,omitempty" yaml:"url,omitempty"`
 }
 
 // OpenAPIOperation represents a single operation in OpenAPI spec
 type OpenAPIOperation struct {
-	Summary     string                     `json:"summary,omitempty" yaml:"summary,omitempty"`
-	Description string                     `json:"description,omitempty" yaml:"description,omitempty"`
-	Tags        []string                   `json:"tags,omitempty" yaml:"tags,omitempty"`
-	Parameters  []OpenAPIParameter         `json:"parameters,omitempty" yaml:"parameters,omitempty"`
-	RequestBody *OpenAPIRequestBody        `json:"requestBody,omitempty" yaml:"requestBody,omitempty"`
-	Responses   map[string]OpenAPIResponse `json:"responses" yaml:"responses"`
-	Security    []goop.SecurityRequirement `json:"security,omitempty" yaml:"security,omitempty"`
+	Summary      string                     `json:"summary,omitempty" yaml:"summary,omitempty"`
+	Description  string                     `json:"description,omitempty" yaml:"description,omitempty"`
+	Tags         []string                   `json:"tags,omitempty" yaml:"tags,omitempty"`
+	Parameters   []OpenAPIParameter         `json:"parameters,omitempty" yaml:"parameters,omitempty"`
+	RequestBody  *OpenAPIRequestBody        `json:"requestBody,omitempty" yaml:"requestBody,omitempty"`
+	Responses    map[string]OpenAPIResponse `json:"responses" yaml:"responses"`
+	Security     []goop.SecurityRequirement `json:"security,omitempty" yaml:"security,omitempty"`
+	OperationId  string                     `json:"operationId,omitempty" yaml:"operationId,omitempty"`
+	Deprecated   *bool                      `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
+	ExternalDocs *OpenAPIExternalDocs       `json:"externalDocs,omitempty" yaml:"externalDocs,omitempty"`
+}
+
+// OpenAPIExternalDocs represents external documentation for the API
+type OpenAPIExternalDocs struct {
+	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+	URL         string `json:"url" yaml:"url"`
 }
 
 // OpenAPIParameter represents a parameter in OpenAPI spec
 type OpenAPIParameter struct {
-	Name        string              `json:"name" yaml:"name"`
-	In          string              `json:"in" yaml:"in"` // "path", "query", "header", "cookie"
-	Description string              `json:"description,omitempty" yaml:"description,omitempty"`
-	Required    bool                `json:"required" yaml:"required"`
-	Schema      *goop.OpenAPISchema `json:"schema,omitempty" yaml:"schema,omitempty"`
+	Name            string                      `json:"name" yaml:"name"`
+	In              string                      `json:"in" yaml:"in"` // "path", "query", "header", "cookie"
+	Description     string                      `json:"description,omitempty" yaml:"description,omitempty"`
+	Required        bool                        `json:"required" yaml:"required"`
+	Schema          *goop.OpenAPISchema         `json:"schema,omitempty" yaml:"schema,omitempty"`
+	Deprecated      *bool                       `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
+	Style           string                      `json:"style,omitempty" yaml:"style,omitempty"`
+	Explode         *bool                       `json:"explode,omitempty" yaml:"explode,omitempty"`
+	AllowEmptyValue *bool                       `json:"allowEmptyValue,omitempty" yaml:"allowEmptyValue,omitempty"`
+	AllowReserved   *bool                       `json:"allowReserved,omitempty" yaml:"allowReserved,omitempty"`
+	Example         interface{}                 `json:"example,omitempty" yaml:"example,omitempty"`
+	Examples        map[string]OpenAPIExample   `json:"examples,omitempty" yaml:"examples,omitempty"`
+	Content         map[string]OpenAPIMediaType `json:"content,omitempty" yaml:"content,omitempty"`
 }
 
 // OpenAPIRequestBody represents a request body in OpenAPI spec
@@ -77,6 +136,18 @@ type OpenAPIRequestBody struct {
 type OpenAPIResponse struct {
 	Description string                      `json:"description" yaml:"description"`
 	Content     map[string]OpenAPIMediaType `json:"content,omitempty" yaml:"content,omitempty"`
+	Headers     map[string]OpenAPIHeader    `json:"headers,omitempty" yaml:"headers,omitempty"`
+	Links       map[string]OpenAPILink      `json:"links,omitempty" yaml:"links,omitempty"`
+}
+
+// OpenAPILink represents a link in OpenAPI spec
+type OpenAPILink struct {
+	OperationRef string                 `json:"operationRef,omitempty" yaml:"operationRef,omitempty"`
+	OperationId  string                 `json:"operationId,omitempty" yaml:"operationId,omitempty"`
+	Parameters   map[string]interface{} `json:"parameters,omitempty" yaml:"parameters,omitempty"`
+	RequestBody  interface{}            `json:"requestBody,omitempty" yaml:"requestBody,omitempty"`
+	Description  string                 `json:"description,omitempty" yaml:"description,omitempty"`
+	Server       *OpenAPIServer         `json:"server,omitempty" yaml:"server,omitempty"`
 }
 
 // OpenAPIMediaType represents a media type in OpenAPI spec
@@ -88,6 +159,29 @@ type OpenAPIMediaType struct {
 type OpenAPIComponents struct {
 	Schemas         map[string]*goop.OpenAPISchema       `json:"schemas,omitempty" yaml:"schemas,omitempty"`
 	SecuritySchemes map[string]goop.SecuritySchemeObject `json:"securitySchemes,omitempty" yaml:"securitySchemes,omitempty"`
+	Responses       map[string]OpenAPIResponse           `json:"responses,omitempty" yaml:"responses,omitempty"`
+	Parameters      map[string]OpenAPIParameter          `json:"parameters,omitempty" yaml:"parameters,omitempty"`
+	Examples        map[string]OpenAPIExample            `json:"examples,omitempty" yaml:"examples,omitempty"`
+	RequestBodies   map[string]OpenAPIRequestBody        `json:"requestBodies,omitempty" yaml:"requestBodies,omitempty"`
+	Headers         map[string]OpenAPIHeader             `json:"headers,omitempty" yaml:"headers,omitempty"`
+}
+
+// OpenAPIExample represents an example in OpenAPI spec
+type OpenAPIExample struct {
+	Summary       string      `json:"summary,omitempty" yaml:"summary,omitempty"`
+	Description   string      `json:"description,omitempty" yaml:"description,omitempty"`
+	Value         interface{} `json:"value,omitempty" yaml:"value,omitempty"`
+	ExternalValue string      `json:"externalValue,omitempty" yaml:"externalValue,omitempty"`
+}
+
+// OpenAPIHeader represents a header in OpenAPI spec
+type OpenAPIHeader struct {
+	Description string                    `json:"description,omitempty" yaml:"description,omitempty"`
+	Required    *bool                     `json:"required,omitempty" yaml:"required,omitempty"`
+	Deprecated  *bool                     `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
+	Schema      *goop.OpenAPISchema       `json:"schema,omitempty" yaml:"schema,omitempty"`
+	Example     interface{}               `json:"example,omitempty" yaml:"example,omitempty"`
+	Examples    map[string]OpenAPIExample `json:"examples,omitempty" yaml:"examples,omitempty"`
 }
 
 // NewOpenAPIGenerator creates a new OpenAPI generator
@@ -106,9 +200,69 @@ func NewOpenAPIGenerator(title, version string) *OpenAPIGenerator {
 			Components: &OpenAPIComponents{
 				Schemas:         make(map[string]*goop.OpenAPISchema),
 				SecuritySchemes: make(map[string]goop.SecuritySchemeObject),
+				Responses:       make(map[string]OpenAPIResponse),
+				Parameters:      make(map[string]OpenAPIParameter),
+				Examples:        make(map[string]OpenAPIExample),
+				RequestBodies:   make(map[string]OpenAPIRequestBody),
+				Headers:         make(map[string]OpenAPIHeader),
 			},
 		},
 	}
+}
+
+// SetDescription sets the API description
+func (g *OpenAPIGenerator) SetDescription(description string) {
+	g.Description = description
+	g.Spec.Info.Description = description
+}
+
+// SetSummary sets the API summary
+func (g *OpenAPIGenerator) SetSummary(summary string) {
+	g.Spec.Info.Summary = summary
+}
+
+// SetTermsOfService sets the API terms of service
+func (g *OpenAPIGenerator) SetTermsOfService(termsOfService string) {
+	g.Spec.Info.TermsOfService = termsOfService
+}
+
+// SetContact sets the API contact information
+func (g *OpenAPIGenerator) SetContact(contact *OpenAPIContact) {
+	g.Spec.Info.Contact = contact
+}
+
+// SetLicense sets the API license information
+func (g *OpenAPIGenerator) SetLicense(license *OpenAPILicense) {
+	g.Spec.Info.License = license
+}
+
+// AddServer adds a server to the OpenAPI specification
+func (g *OpenAPIGenerator) AddServer(server OpenAPIServer) {
+	g.Servers = append(g.Servers, server)
+	g.Spec.Servers = append(g.Spec.Servers, server)
+}
+
+// AddTag adds a tag to the OpenAPI specification
+func (g *OpenAPIGenerator) AddTag(tag OpenAPITag) {
+	g.Spec.Tags = append(g.Spec.Tags, tag)
+}
+
+// SetExternalDocs sets the external documentation for the API
+func (g *OpenAPIGenerator) SetExternalDocs(externalDocs *OpenAPIExternalDocs) {
+	g.Spec.ExternalDocs = externalDocs
+}
+
+// AddWebhook adds a webhook to the OpenAPI specification
+func (g *OpenAPIGenerator) AddWebhook(name string, webhook OpenAPIWebhook) {
+	if g.Spec.Webhooks == nil {
+		g.Spec.Webhooks = make(map[string]OpenAPIWebhook)
+	}
+	g.Spec.Webhooks[name] = webhook
+}
+
+// SetJsonSchemaDialect sets the JSON Schema dialect for the API
+func (g *OpenAPIGenerator) SetJsonSchemaDialect(dialect string) {
+	g.Spec.JsonSchemaDialect = dialect
 }
 
 // AddSecurityScheme adds a security scheme to the OpenAPI specification

@@ -198,6 +198,49 @@ func main() {
 	// Create OpenAPI generator
 	openAPIGen := operations.NewOpenAPIGenerator("User Service API", "1.0.0")
 
+	// Add enhanced OpenAPI metadata using new Fixed Fields features
+	openAPIGen.SetDescription("A comprehensive user management service with full CRUD operations")
+	openAPIGen.SetSummary("User Management API")
+	openAPIGen.SetTermsOfService("https://example.com/terms")
+	openAPIGen.SetContact(&operations.OpenAPIContact{
+		Name:  "API Support",
+		Email: "support@example.com",
+		URL:   "https://example.com/support",
+	})
+	openAPIGen.SetLicense(&operations.OpenAPILicense{
+		Name: "MIT License",
+		URL:  "https://opensource.org/licenses/MIT",
+	})
+
+	// Add global tags
+	openAPIGen.AddTag(operations.OpenAPITag{
+		Name:        "users",
+		Description: "Operations related to user management",
+		ExternalDocs: &operations.OpenAPIExternalDocs{
+			Description: "User management documentation",
+			URL:         "https://example.com/docs/users",
+		},
+	})
+
+	// Add global external documentation
+	openAPIGen.SetExternalDocs(&operations.OpenAPIExternalDocs{
+		Description: "Complete API documentation",
+		URL:         "https://example.com/docs",
+	})
+
+	// Add server configuration
+	openAPIGen.AddServer(operations.OpenAPIServer{
+		URL:         "https://api.example.com/{version}",
+		Description: "Production server",
+		Variables: map[string]operations.OpenAPIServerVariable{
+			"version": {
+				Default:     "v1",
+				Enum:        []string{"v1", "v2"},
+				Description: "API version",
+			},
+		},
+	})
+
 	// Create router with generators
 	router := operations.NewRouter(engine, openAPIGen)
 

@@ -260,7 +260,98 @@ func getOrderAnalyticsHandler(ctx context.Context, params struct{}, query OrderA
 
 func main() {
 	engine := gin.Default()
+
+	// Create OpenAPI generator with enhanced metadata
 	openAPIGen := operations.NewOpenAPIGenerator("Order Service API", "1.2.0")
+
+	// Demonstrate OpenAPI 3.1 Fixed Fields features
+	openAPIGen.SetDescription("A comprehensive order processing service with advanced e-commerce features, complex nested schemas, and rich validation")
+	openAPIGen.SetSummary("Order Processing & E-commerce API")
+	openAPIGen.SetTermsOfService("https://api.ecommerce.com/terms")
+
+	// Enhanced contact information
+	openAPIGen.SetContact(&operations.OpenAPIContact{
+		Name:  "E-commerce Order Team",
+		Email: "orders@ecommerce.com",
+		URL:   "https://api.ecommerce.com/support/orders",
+	})
+
+	// License information
+	openAPIGen.SetLicense(&operations.OpenAPILicense{
+		Name: "Apache 2.0",
+		URL:  "https://www.apache.org/licenses/LICENSE-2.0.html",
+	})
+
+	// Global tags with external documentation
+	openAPIGen.AddTag(operations.OpenAPITag{
+		Name:        "orders",
+		Description: "Order management operations including creation, status updates, and cancellation",
+		ExternalDocs: &operations.OpenAPIExternalDocs{
+			Description: "Order management documentation",
+			URL:         "https://docs.ecommerce.com/orders",
+		},
+	})
+
+	openAPIGen.AddTag(operations.OpenAPITag{
+		Name:        "e-commerce",
+		Description: "E-commerce specific operations for order processing",
+		ExternalDocs: &operations.OpenAPIExternalDocs{
+			Description: "E-commerce integration guide",
+			URL:         "https://docs.ecommerce.com/integration",
+		},
+	})
+
+	openAPIGen.AddTag(operations.OpenAPITag{
+		Name:        "filtering",
+		Description: "Advanced filtering and search operations for orders",
+	})
+
+	openAPIGen.AddTag(operations.OpenAPITag{
+		Name:        "analytics",
+		Description: "Order analytics and reporting operations",
+		ExternalDocs: &operations.OpenAPIExternalDocs{
+			Description: "Analytics API documentation",
+			URL:         "https://docs.ecommerce.com/analytics",
+		},
+	})
+
+	openAPIGen.AddTag(operations.OpenAPITag{
+		Name:        "status",
+		Description: "Order status management and tracking",
+	})
+
+	openAPIGen.AddTag(operations.OpenAPITag{
+		Name:        "reporting",
+		Description: "Business intelligence and reporting features",
+	})
+
+	// Global external documentation
+	openAPIGen.SetExternalDocs(&operations.OpenAPIExternalDocs{
+		Description: "Complete order service documentation with examples and integration guides",
+		URL:         "https://docs.ecommerce.com/order-service",
+	})
+
+	// Server configuration with variables
+	openAPIGen.AddServer(operations.OpenAPIServer{
+		URL:         "https://{environment}.orders.ecommerce.com/{version}",
+		Description: "Order service with configurable environment and API version",
+		Variables: map[string]operations.OpenAPIServerVariable{
+			"environment": {
+				Default:     "api",
+				Enum:        []string{"api", "staging", "sandbox"},
+				Description: "Order service environment",
+			},
+			"version": {
+				Default:     "v1",
+				Enum:        []string{"v1", "v2"},
+				Description: "API version",
+			},
+		},
+	})
+
+	// Set JSON Schema dialect
+	openAPIGen.SetJsonSchemaDialect("https://json-schema.org/draft/2020-12/schema")
+
 	router := operations.NewRouter(engine, openAPIGen)
 
 	// Define comprehensive schemas
