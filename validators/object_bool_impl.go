@@ -9,14 +9,14 @@ import (
 
 // Core object schema struct (unexported)
 type objectSchema struct {
-	schema        map[string]interface{}
-	strictMode    bool
-	partialMode   bool
-	customFunc    func(map[string]interface{}) error
-	required      bool
-	optional      bool
-	defaultValue  map[string]interface{}
-	customError   map[string]string
+	schema       map[string]interface{}
+	strictMode   bool
+	partialMode  bool
+	customFunc   func(map[string]interface{}) error
+	required     bool
+	optional     bool
+	defaultValue map[string]interface{}
+	customError  map[string]string
 }
 
 // Core bool schema struct (unexported)
@@ -165,7 +165,7 @@ func (o *objectSchema) validate(data interface{}) error {
 
 	// Type check - convert to map[string]interface{}
 	var obj map[string]interface{}
-	
+
 	// Use reflection to handle different map types
 	val := reflect.ValueOf(data)
 	if val.Kind() != reflect.Map {
@@ -195,7 +195,7 @@ func (o *objectSchema) validate(data interface{}) error {
 	var details []goop.ValidationError
 	for fieldName, fieldSchema := range o.schema {
 		value, exists := obj[fieldName]
-		
+
 		// Handle missing fields
 		if !exists {
 			if !o.partialMode {
@@ -247,28 +247,28 @@ func (o *objectSchema) validateField(fieldSchema, value interface{}) error {
 		requiredSchema.stringSchema.required = true
 		requiredSchema.stringSchema.optional = false
 		return requiredSchema.Validate(value)
-		
+
 	case *numberSchema:
 		// Create a required number validator from the unfinalized schema
 		requiredSchema := &requiredNumberSchema{schema}
 		requiredSchema.numberSchema.required = true
 		requiredSchema.numberSchema.optional = false
 		return requiredSchema.Validate(value)
-		
+
 	case *objectSchema:
 		// Create a required object validator from the unfinalized schema
 		requiredSchema := &requiredObjectSchema{schema}
 		requiredSchema.objectSchema.required = true
 		requiredSchema.objectSchema.optional = false
 		return requiredSchema.Validate(value)
-		
+
 	case *boolSchema:
-		// Create a required bool validator from the unfinalized schema  
+		// Create a required bool validator from the unfinalized schema
 		requiredSchema := &requiredBoolSchema{schema}
 		requiredSchema.boolSchema.required = true
 		requiredSchema.boolSchema.optional = false
 		return requiredSchema.Validate(value)
-		
+
 	case *arraySchema:
 		// Create a required array validator from the unfinalized schema
 		requiredSchema := &requiredArraySchema{schema}

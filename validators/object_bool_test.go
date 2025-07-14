@@ -2,7 +2,7 @@ package validators
 
 import (
 	"testing"
-	
+
 	"github.com/picogrid/go-op"
 )
 
@@ -131,7 +131,7 @@ func TestObjectValidation(t *testing.T) {
 
 		// Still validate provided fields
 		invalidPartialData := map[string]interface{}{
-			"name": "",    // Invalid
+			"name": "", // Invalid
 			"age":  25,
 		}
 
@@ -255,7 +255,7 @@ func TestObjectCustomMessages(t *testing.T) {
 		}).Strict().Required()
 
 		invalidData := map[string]interface{}{
-			"name": "John",
+			"name":  "John",
 			"extra": "field",
 		}
 

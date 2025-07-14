@@ -82,7 +82,7 @@ func BenchmarkFullRequestFlow(b *testing.B) {
 				w.Write([]byte(`{"error":"Invalid JSON"}`))
 				return
 			}
-			
+
 			// Validate request
 			if err := createUserSchema.Validate(data); err != nil {
 				w.WriteHeader(http.StatusBadRequest)
@@ -90,7 +90,7 @@ func BenchmarkFullRequestFlow(b *testing.B) {
 				w.Write(errData)
 				return
 			}
-			
+
 			// Build response
 			response := map[string]interface{}{
 				"id":        "123e4567-e89b-12d3-a456-426614174000",
@@ -101,13 +101,13 @@ func BenchmarkFullRequestFlow(b *testing.B) {
 			if profile, ok := data["profile"]; ok {
 				response["profile"] = profile
 			}
-			
+
 			// Validate response
 			if err := userResponseSchema.Validate(response); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			
+
 			// Send response
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
@@ -116,7 +116,7 @@ func BenchmarkFullRequestFlow(b *testing.B) {
 		}
 
 		payload, _ := json.Marshal(validPayload)
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -132,47 +132,47 @@ func BenchmarkFullRequestFlow(b *testing.B) {
 func BenchmarkEndToEndOperation(b *testing.B) {
 	// Simple router implementation for benchmarking
 	routes := make(map[string]http.HandlerFunc)
-	
+
 	register := func(method, path string, handler http.HandlerFunc) {
 		key := method + " " + path
 		routes[key] = handler
 	}
-	
+
 	find := func(method, path string) (http.HandlerFunc, map[string]string, bool) {
 		// Try exact match first
 		key := method + " " + path
 		if handler, ok := routes[key]; ok {
 			return handler, nil, true
 		}
-		
+
 		// Check for parameterized routes
 		if method == "GET" && len(path) > 7 && path[:7] == "/users/" && path != "/users" {
 			if handler, ok := routes["GET /users/{id}"]; ok {
 				return handler, map[string]string{"id": path[7:]}, true
 			}
 		}
-		
+
 		return nil, nil, false
 	}
-	
+
 	// Schemas defined inline in handlers for this benchmark
-	
+
 	// Register handlers directly
 	register("GET", "/users", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`[{"id":"123","username":"john","email":"john@example.com"}]`))
 	})
-	
+
 	register("POST", "/users", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusCreated)
 		w.Write([]byte(`{"id":"123","username":"john","email":"john@example.com"}`))
 	})
-	
+
 	register("GET", "/users/{id}", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"id":"123","username":"john","email":"john@example.com"}`))
 	})
-	
+
 	// Test different endpoints
 	b.Run("GET_List", func(b *testing.B) {
 		b.ReportAllocs()
@@ -189,7 +189,7 @@ func BenchmarkEndToEndOperation(b *testing.B) {
 			}
 		}
 	})
-	
+
 	b.Run("POST_Create", func(b *testing.B) {
 		payload := []byte(`{"username":"john_doe","email":"john@example.com","password":"securepass123"}`)
 		b.ReportAllocs()
@@ -207,7 +207,7 @@ func BenchmarkEndToEndOperation(b *testing.B) {
 			}
 		}
 	})
-	
+
 	b.Run("GET_Single", func(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
@@ -241,7 +241,7 @@ func BenchmarkRealWorldAPI(b *testing.B) {
 			"discount":  validators.Number().Min(0).Max(100).Optional(),
 		})).Required(),
 		"shipping": validators.Object(map[string]interface{}{
-			"method":  validators.String().Pattern(`^(standard|express|overnight)$`).Required(),
+			"method": validators.String().Pattern(`^(standard|express|overnight)$`).Required(),
 			"address": validators.Object(map[string]interface{}{
 				"line1":      validators.String().Min(1).Max(200).Required(),
 				"line2":      validators.String().Max(200).Optional(),
@@ -308,12 +308,12 @@ func BenchmarkRealWorldAPI(b *testing.B) {
 
 	b.Run("Order_Processing_Handler", func(b *testing.B) {
 		responseSchema := validators.Object(map[string]interface{}{
-			"orderId":          validators.String().Required(),
-			"status":           validators.String().Required(),
-			"total":            validators.Number().Required(),
+			"orderId":           validators.String().Required(),
+			"status":            validators.String().Required(),
+			"total":             validators.Number().Required(),
 			"estimatedDelivery": validators.String().Required(),
 		}).Required()
-		
+
 		// Handler with validation
 		orderCounter := 0
 		validatedHandler := func(w http.ResponseWriter, r *http.Request) {
@@ -323,13 +323,13 @@ func BenchmarkRealWorldAPI(b *testing.B) {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
-			
+
 			// Validate request
 			if err := orderSchema.Validate(data); err != nil {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
-			
+
 			// Process order
 			total := 0.0
 			if items, ok := data["items"].([]interface{}); ok {
@@ -345,21 +345,21 @@ func BenchmarkRealWorldAPI(b *testing.B) {
 					}
 				}
 			}
-			
+
 			orderCounter++
 			response := map[string]interface{}{
-				"orderId":          fmt.Sprintf("order-%d", orderCounter),
-				"status":           "confirmed",
-				"total":            total,
+				"orderId":           fmt.Sprintf("order-%d", orderCounter),
+				"status":            "confirmed",
+				"total":             total,
 				"estimatedDelivery": "2024-01-05",
 			}
-			
+
 			// Validate response
 			if err := responseSchema.Validate(response); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			
+
 			// Send response
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
@@ -368,7 +368,7 @@ func BenchmarkRealWorldAPI(b *testing.B) {
 		}
 
 		payload, _ := json.Marshal(testOrder)
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -383,13 +383,13 @@ func BenchmarkRealWorldAPI(b *testing.B) {
 // BenchmarkGinIntegration tests integration with Gin framework
 func BenchmarkGinIntegration(b *testing.B) {
 	gin.SetMode(gin.ReleaseMode)
-	
+
 	// Create schemas
 	loginSchema := validators.Object(map[string]interface{}{
 		"email":    validators.Email(),
 		"password": validators.String().Min(8).Required(),
 	}).Required()
-	
+
 	// Create Gin middleware for validation
 	validateBody := func(schema goop.Schema) gin.HandlerFunc {
 		return func(c *gin.Context) {
@@ -399,30 +399,30 @@ func BenchmarkGinIntegration(b *testing.B) {
 				c.Abort()
 				return
 			}
-			
+
 			if err := schema.Validate(body); err != nil {
 				c.JSON(400, gin.H{"error": err.Error()})
 				c.Abort()
 				return
 			}
-			
+
 			c.Set("validatedBody", body)
 			c.Next()
 		}
 	}
-	
+
 	b.Run("Gin_Middleware_Validation", func(b *testing.B) {
 		router := gin.New()
 		router.POST("/login", validateBody(loginSchema), func(c *gin.Context) {
 			c.JSON(200, gin.H{
-				"token":      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-				"expiresIn":  3600,
-				"tokenType":  "Bearer",
+				"token":     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+				"expiresIn": 3600,
+				"tokenType": "Bearer",
 			})
 		})
-		
+
 		payload := []byte(`{"email":"user@example.com","password":"securepassword123"}`)
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -432,7 +432,7 @@ func BenchmarkGinIntegration(b *testing.B) {
 			router.ServeHTTP(w, r)
 		}
 	})
-	
+
 	// Skip Gin operations integration for now as it requires more setup
 	// Focus on core validation performance which is the main concern
 }

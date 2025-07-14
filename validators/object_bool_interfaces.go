@@ -5,8 +5,8 @@ package validators
 // either a required or optional state. This prevents invalid method chaining.
 type ObjectBuilder interface {
 	// Configuration methods - these return ObjectBuilder to allow chaining
-	Strict() ObjectBuilder                                   // Only allow defined keys
-	Partial() ObjectBuilder                                  // All keys become optional
+	Strict() ObjectBuilder  // Only allow defined keys
+	Partial() ObjectBuilder // All keys become optional
 	Custom(fn func(map[string]interface{}) error) ObjectBuilder
 
 	// State transition methods - these change the type to prevent invalid chaining

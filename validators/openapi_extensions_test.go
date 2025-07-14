@@ -6,7 +6,7 @@ import (
 
 // OpenAPI extension tests are disabled because ToOpenAPISchema and GetValidationInfo
 // methods are not available on the builder interfaces.
-// These methods exist on the underlying schema implementations but are not exposed 
+// These methods exist on the underlying schema implementations but are not exposed
 // through the builder pattern interfaces.
 
 func TestOpenAPIExtensions_Placeholder(t *testing.T) {

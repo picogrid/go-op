@@ -10,15 +10,15 @@ import (
 // Core array schema struct (unexported)
 // This contains all the validation configuration and is wrapped by state-specific types
 type arraySchema struct {
-	elementSchema    interface{}
-	minItems         int
-	maxItems         int
-	contains         interface{}
-	customFunc       func([]interface{}) error
-	required         bool
-	optional         bool
-	defaultValue     []interface{}
-	customError      map[string]string
+	elementSchema interface{}
+	minItems      int
+	maxItems      int
+	contains      interface{}
+	customFunc    func([]interface{}) error
+	required      bool
+	optional      bool
+	defaultValue  []interface{}
+	customError   map[string]string
 }
 
 // State wrapper types for compile-time safety
@@ -298,39 +298,39 @@ func (a *arraySchema) validateElement(item interface{}) error {
 	switch schema := a.elementSchema.(type) {
 	case *stringSchema:
 		// Create a COPY of the string schema to avoid race conditions
-		schemaCopy := *schema  // This creates a copy of the struct
+		schemaCopy := *schema // This creates a copy of the struct
 		requiredSchema := &requiredStringSchema{&schemaCopy}
 		requiredSchema.stringSchema.required = true
 		requiredSchema.stringSchema.optional = false
 		return requiredSchema.Validate(item)
-		
+
 	case *numberSchema:
 		// Create a COPY of the number schema to avoid race conditions
-		schemaCopy := *schema  // This creates a copy of the struct
+		schemaCopy := *schema // This creates a copy of the struct
 		requiredSchema := &requiredNumberSchema{&schemaCopy}
 		requiredSchema.numberSchema.required = true
 		requiredSchema.numberSchema.optional = false
 		return requiredSchema.Validate(item)
-		
+
 	case *objectSchema:
 		// Create a COPY of the object schema to avoid race conditions
-		schemaCopy := *schema  // This creates a copy of the struct
+		schemaCopy := *schema // This creates a copy of the struct
 		requiredSchema := &requiredObjectSchema{&schemaCopy}
 		requiredSchema.objectSchema.required = true
 		requiredSchema.objectSchema.optional = false
 		return requiredSchema.Validate(item)
-		
+
 	case *boolSchema:
 		// Create a COPY of the bool schema to avoid race conditions
-		schemaCopy := *schema  // This creates a copy of the struct
+		schemaCopy := *schema // This creates a copy of the struct
 		requiredSchema := &requiredBoolSchema{&schemaCopy}
 		requiredSchema.boolSchema.required = true
 		requiredSchema.boolSchema.optional = false
 		return requiredSchema.Validate(item)
-		
+
 	case *arraySchema:
 		// Create a COPY of the array schema to avoid race conditions
-		schemaCopy := *schema  // This creates a copy of the struct
+		schemaCopy := *schema // This creates a copy of the struct
 		requiredSchema := &requiredArraySchema{&schemaCopy}
 		requiredSchema.arraySchema.required = true
 		requiredSchema.arraySchema.optional = false

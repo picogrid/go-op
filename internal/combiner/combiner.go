@@ -68,7 +68,7 @@ func (c *Combiner) LoadFromConfig() error {
 				return fmt.Errorf("failed to resolve spec file path %s: %w", service.SpecFile, err)
 			}
 			c.inputFiles = append(c.inputFiles, absPath)
-			
+
 			// Store service metadata
 			if c.config.ServicePrefix == nil {
 				c.config.ServicePrefix = make(map[string]string)
@@ -114,7 +114,7 @@ func (c *Combiner) LoadSpecs() error {
 
 		if c.config.Verbose {
 			pathCount := len(spec.Paths)
-			fmt.Printf("[VERBOSE] Loaded %d paths from %s (service: %s, prefix: %s)\n", 
+			fmt.Printf("[VERBOSE] Loaded %d paths from %s (service: %s, prefix: %s)\n",
 				pathCount, filepath.Base(filename), serviceName, prefix)
 		}
 	}
@@ -158,13 +158,13 @@ func (c *Combiner) loadSingleSpec(filename string) (*operations.OpenAPISpec, err
 func (c *Combiner) extractServiceName(filename string) string {
 	base := filepath.Base(filename)
 	name := strings.TrimSuffix(base, filepath.Ext(base))
-	
+
 	// Remove common suffixes
 	name = strings.TrimSuffix(name, "-service")
 	name = strings.TrimSuffix(name, ".service")
 	name = strings.TrimSuffix(name, "-api")
 	name = strings.TrimSuffix(name, ".api")
-	
+
 	return name
 }
 
@@ -191,7 +191,7 @@ func (c *Combiner) CombineSpecs() error {
 	// Combine paths from all specs
 	for _, specMeta := range c.specs {
 		c.stats.ServicesCombined++
-		
+
 		if err := c.combineSpecPaths(specMeta); err != nil {
 			return fmt.Errorf("failed to combine paths from %s: %w", specMeta.SourceFile, err)
 		}
@@ -212,7 +212,7 @@ func (c *Combiner) CombineSpecs() error {
 	}
 
 	if c.config.Verbose {
-		fmt.Printf("[VERBOSE] Combined specification has %d paths and %d operations\n", 
+		fmt.Printf("[VERBOSE] Combined specification has %d paths and %d operations\n",
 			c.stats.TotalPaths, c.stats.TotalOperations)
 	}
 
@@ -224,10 +224,10 @@ func (c *Combiner) combineSpecPaths(specMeta *SpecWithMetadata) error {
 	for path, methods := range specMeta.Spec.Paths {
 		// Apply path transformations
 		finalPath := c.transformPath(path, specMeta)
-		
+
 		// Filter operations by tags if specified
 		filteredMethods := c.filterMethodsByTags(methods)
-		
+
 		if len(filteredMethods) == 0 {
 			continue // Skip if all operations filtered out
 		}
@@ -241,15 +241,15 @@ func (c *Combiner) combineSpecPaths(specMeta *SpecWithMetadata) error {
 		for method, operation := range filteredMethods {
 			// Add service tag to operation
 			operation.Tags = c.addServiceTag(operation.Tags, specMeta.ServiceName)
-			
+
 			// Check for conflicts
 			if existingOp, exists := c.combined.Paths[finalPath][method]; exists {
 				if c.config.Verbose {
-					fmt.Printf("[VERBOSE] Warning: Overriding %s %s (was from %s, now from %s)\n", 
+					fmt.Printf("[VERBOSE] Warning: Overriding %s %s (was from %s, now from %s)\n",
 						method, finalPath, c.findOperationSource(existingOp), specMeta.ServiceName)
 				}
 			}
-			
+
 			c.combined.Paths[finalPath][method] = operation
 		}
 	}
@@ -330,14 +330,14 @@ func (c *Combiner) filterMethodsByTags(methods map[string]operations.OpenAPIOper
 // addServiceTag adds a service tag to operation tags
 func (c *Combiner) addServiceTag(tags []string, serviceName string) []string {
 	serviceTag := fmt.Sprintf("service:%s", serviceName)
-	
+
 	// Check if service tag already exists
 	for _, tag := range tags {
 		if tag == serviceTag {
 			return tags
 		}
 	}
-	
+
 	// Add service tag at the beginning
 	return append([]string{serviceTag}, tags...)
 }
@@ -356,11 +356,11 @@ func (c *Combiner) findOperationSource(operation operations.OpenAPIOperation) st
 func (c *Combiner) mergeSchemas() error {
 	// For now, we'll implement a basic version that collects unique schemas
 	// A full implementation would need sophisticated schema comparison and merging
-	
+
 	if c.config.Verbose {
 		fmt.Printf("[VERBOSE] Schema merging not yet implemented - will be added in future version\n")
 	}
-	
+
 	return nil
 }
 

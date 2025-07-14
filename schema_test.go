@@ -486,15 +486,15 @@ func TestSchemaIntegration(t *testing.T) {
 			ValidateFunc: func(data interface{}) error {
 				// Simulate complex validation logic
 				time.Sleep(1 * time.Millisecond)
-				
+
 				if data == nil {
 					return NewValidationError("data", data, "Data cannot be nil")
 				}
-				
+
 				if str, ok := data.(string); ok && len(str) == 0 {
 					return NewValidationError("data", data, "String cannot be empty")
 				}
-				
+
 				return nil
 			},
 		}
@@ -531,7 +531,7 @@ func TestSchemaIntegration(t *testing.T) {
 			}
 		}
 
-		expectedValid := 860  // 86% should be valid (1000 - 100 nil - 40 empty = 860)
+		expectedValid := 860   // 86% should be valid (1000 - 100 nil - 40 empty = 860)
 		expectedInvalid := 140 // 14% should be invalid (100 nil + 40 empty = 140)
 
 		if validCount != expectedValid {

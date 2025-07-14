@@ -121,7 +121,7 @@ func (g *Generator) scanFile(filename string) error {
 	// Use sophisticated AST analyzer to extract operations
 	analyzer := NewASTAnalyzer(g.fileSet, g.config.Verbose)
 	operations := analyzer.ExtractOperations(file, filename)
-	
+
 	// Add discovered operations to the generator
 	for _, op := range operations {
 		g.operations = append(g.operations, op)
@@ -133,7 +133,6 @@ func (g *Generator) scanFile(filename string) error {
 
 	return nil
 }
-
 
 // GenerateSpec generates the OpenAPI specification from discovered operations
 func (g *Generator) GenerateSpec() error {

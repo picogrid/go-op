@@ -165,7 +165,7 @@ func BenchmarkComplexNestedSchema(b *testing.B) {
 				"updatedAt": validators.String().Required(),
 			}).Required(),
 		}).Required()
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -180,8 +180,8 @@ func BenchmarkComplexNestedSchema(b *testing.B) {
 			"order": validators.Object(map[string]interface{}{
 				"id": validators.String().Pattern(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`).Required(),
 				"customer": validators.Object(map[string]interface{}{
-					"id":      validators.String().Pattern(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`).Required(),
-					"name":    validators.String().Required(),
+					"id":   validators.String().Pattern(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`).Required(),
+					"name": validators.String().Required(),
 					"address": validators.Object(map[string]interface{}{
 						"street":  validators.String().Required(),
 						"city":    validators.String().Required(),
@@ -195,7 +195,7 @@ func BenchmarkComplexNestedSchema(b *testing.B) {
 				})).Required(),
 			}).Required(),
 		}).Required()
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -216,7 +216,7 @@ func BenchmarkComplexNestedSchema(b *testing.B) {
 				"metadata": validators.Object(nil).Optional(),
 			}),
 		).Required()
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -244,13 +244,13 @@ func BenchmarkOperationToOpenAPI(b *testing.B) {
 		paramsSchema := validators.Object(map[string]interface{}{
 			"id": validators.String().Pattern(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`).Required(),
 		}).Required()
-		
+
 		responseSchema := validators.Object(map[string]interface{}{
 			"id":       validators.String().Pattern(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`).Required(),
 			"username": validators.String().Required(),
 			"email":    validators.String().Required(),
 		}).Required()
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -269,7 +269,7 @@ func BenchmarkMemoryUsage(b *testing.B) {
 		// Create a large schema with many fields
 		fields := make(map[string]interface{})
 		for i := 0; i < 100; i++ {
-			fieldName := string(rune('a' + i%26)) + string(rune('0' + i/26))
+			fieldName := string(rune('a'+i%26)) + string(rune('0'+i/26))
 			switch i % 5 {
 			case 0:
 				fields[fieldName] = validators.String().Min(1).Max(100).Optional()
@@ -284,7 +284,7 @@ func BenchmarkMemoryUsage(b *testing.B) {
 			}
 		}
 		schema := validators.Object(fields).Required()
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -299,12 +299,12 @@ func BenchmarkMemoryUsage(b *testing.B) {
 		schemas := make([]goop.EnhancedSchema, 100)
 		for i := 0; i < 100; i++ {
 			schemas[i] = validators.Object(map[string]interface{}{
-				"id":   validators.String().Pattern(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`).Required(),
-				"name": validators.String().Required(),
+				"id":    validators.String().Pattern(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`).Required(),
+				"name":  validators.String().Required(),
 				"value": validators.Number().Min(0).Max(100).Required(),
 			}).Required().(goop.EnhancedSchema)
 		}
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -326,9 +326,9 @@ func BenchmarkMemoryUsage(b *testing.B) {
 				"child": createNestedObject(depth - 1),
 			}).Required()
 		}
-		
+
 		schema := createNestedObject(10) // 10 levels deep
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -346,7 +346,7 @@ func BenchmarkOpenAPIExtensions(b *testing.B) {
 			Min(1).WithMinLengthMessage("Too short").
 			Max(100).WithMaxLengthMessage("Too long").
 			Required()
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -358,15 +358,15 @@ func BenchmarkOpenAPIExtensions(b *testing.B) {
 
 	b.Run("Complex_Object_Schema", func(b *testing.B) {
 		schema := validators.Object(map[string]interface{}{
-			"type": validators.String().Pattern(`^(email|sms|push)$`).Required(),
+			"type":      validators.String().Pattern(`^(email|sms|push)$`).Required(),
 			"recipient": validators.String().Required(),
-			"message": validators.String().Max(1000).Required(),
+			"message":   validators.String().Max(1000).Required(),
 			"metadata": validators.Object(map[string]interface{}{
 				"priority": validators.String().Pattern(`^(low|medium|high)$`).Optional(),
-				"retries": validators.Number().Min(0).Max(10).Optional(),
+				"retries":  validators.Number().Min(0).Max(10).Optional(),
 			}).Optional(),
 		}).Required()
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {

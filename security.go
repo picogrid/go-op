@@ -82,7 +82,7 @@ func (sr SecurityRequirements) RequireAll(schemes ...SecurityRequirement) Securi
 	if len(schemes) == 0 {
 		return sr
 	}
-	
+
 	// Merge all schemes into a single requirement (AND logic)
 	merged := SecurityRequirement{}
 	for _, scheme := range schemes {
@@ -90,7 +90,7 @@ func (sr SecurityRequirements) RequireAll(schemes ...SecurityRequirement) Securi
 			merged[name] = scopes
 		}
 	}
-	
+
 	return append(sr, merged)
 }
 
@@ -116,14 +116,14 @@ func (a *APIKeySecurityScheme) Validate() error {
 	if a.Name == "" {
 		return fmt.Errorf("apiKey security scheme requires 'name' field")
 	}
-	
+
 	switch a.In {
 	case HeaderLocation, QueryLocation, CookieLocation:
 		// Valid locations
 	default:
 		return fmt.Errorf("apiKey 'in' field must be 'header', 'query', or 'cookie', got: %s", a.In)
 	}
-	
+
 	return nil
 }
 
@@ -154,22 +154,22 @@ func (h *HTTPSecurityScheme) Validate() error {
 	if h.Scheme == "" {
 		return fmt.Errorf("http security scheme requires 'scheme' field")
 	}
-	
+
 	// Common HTTP authentication schemes
 	validSchemes := map[string]bool{
-		"basic":    true,
-		"bearer":   true,
-		"digest":   true,
+		"basic":     true,
+		"bearer":    true,
+		"digest":    true,
 		"negotiate": true,
-		"oauth":    true,
+		"oauth":     true,
 	}
-	
+
 	scheme := strings.ToLower(h.Scheme)
 	if !validSchemes[scheme] {
 		// Allow custom schemes but warn about common ones
 		return nil
 	}
-	
+
 	return nil
 }
 
@@ -196,7 +196,7 @@ func (f *OAuth2Flow) Validate(flowType OAuth2FlowType) error {
 	if f.Scopes == nil {
 		return fmt.Errorf("oauth2 flow requires 'scopes' field")
 	}
-	
+
 	switch flowType {
 	case ImplicitFlow:
 		if f.AuthorizationURL == "" {
@@ -218,7 +218,7 @@ func (f *OAuth2Flow) Validate(flowType OAuth2FlowType) error {
 			return fmt.Errorf("authorizationCode flow requires 'tokenUrl'")
 		}
 	}
-	
+
 	// Validate URLs if provided
 	urls := []string{f.AuthorizationURL, f.TokenURL, f.RefreshURL}
 	for _, urlStr := range urls {
@@ -228,7 +228,7 @@ func (f *OAuth2Flow) Validate(flowType OAuth2FlowType) error {
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -243,39 +243,39 @@ type OAuth2Flows struct {
 // Validate validates all OAuth2 flows
 func (f *OAuth2Flows) Validate() error {
 	flowCount := 0
-	
+
 	if f.Implicit != nil {
 		if err := f.Implicit.Validate(ImplicitFlow); err != nil {
 			return fmt.Errorf("implicit flow validation failed: %v", err)
 		}
 		flowCount++
 	}
-	
+
 	if f.Password != nil {
 		if err := f.Password.Validate(PasswordFlow); err != nil {
 			return fmt.Errorf("password flow validation failed: %v", err)
 		}
 		flowCount++
 	}
-	
+
 	if f.ClientCredentials != nil {
 		if err := f.ClientCredentials.Validate(ClientCredentialsFlow); err != nil {
 			return fmt.Errorf("clientCredentials flow validation failed: %v", err)
 		}
 		flowCount++
 	}
-	
+
 	if f.AuthorizationCode != nil {
 		if err := f.AuthorizationCode.Validate(AuthorizationCodeFlow); err != nil {
 			return fmt.Errorf("authorizationCode flow validation failed: %v", err)
 		}
 		flowCount++
 	}
-	
+
 	if flowCount == 0 {
 		return fmt.Errorf("oauth2 security scheme requires at least one flow")
 	}
-	
+
 	return nil
 }
 
@@ -320,11 +320,11 @@ func (o *OpenIDConnectSecurityScheme) Validate() error {
 	if o.OpenIDConnectURL == "" {
 		return fmt.Errorf("openIdConnect security scheme requires 'openIdConnectUrl' field")
 	}
-	
+
 	if _, err := url.Parse(o.OpenIDConnectURL); err != nil {
 		return fmt.Errorf("invalid openIdConnectUrl '%s': %v", o.OpenIDConnectURL, err)
 	}
-	
+
 	return nil
 }
 

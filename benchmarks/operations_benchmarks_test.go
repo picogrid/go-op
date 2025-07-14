@@ -30,7 +30,7 @@ func BenchmarkOperationBuilding(b *testing.B) {
 		paramsSchema := validators.Object(map[string]interface{}{
 			"id": validators.String().Pattern(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`).Required(),
 		}).Required()
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -48,14 +48,14 @@ func BenchmarkOperationBuilding(b *testing.B) {
 			"email": validators.Email(),
 			"age":   validators.Number().Min(18).Max(120).Optional(),
 		}).Required()
-		
+
 		responseSchema := validators.Object(map[string]interface{}{
 			"id":        validators.String().Pattern(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`).Required(),
 			"name":      validators.String().Required(),
 			"email":     validators.String().Required(),
 			"createdAt": validators.String().Required(),
 		}).Required()
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -72,19 +72,19 @@ func BenchmarkOperationBuilding(b *testing.B) {
 		paramsSchema := validators.Object(map[string]interface{}{
 			"id": validators.String().Pattern(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`).Required(),
 		}).Required()
-		
+
 		querySchema := validators.Object(map[string]interface{}{
 			"include": validators.String().Pattern(`^(profile|posts|comments)$`).Optional(),
 			"page":    validators.Number().Min(1).Optional(),
 			"limit":   validators.Number().Min(1).Max(100).Optional(),
 		}).Optional()
-		
+
 		bodySchema := validators.Object(map[string]interface{}{
 			"name":  validators.String().Min(1).Max(100).Optional(),
 			"email": validators.String().Pattern(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`).Optional(),
 			"bio":   validators.String().Max(500).Optional(),
 		}).Required()
-		
+
 		responseSchema := validators.Object(map[string]interface{}{
 			"id":        validators.String().Pattern(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`).Required(),
 			"name":      validators.String().Required(),
@@ -92,7 +92,7 @@ func BenchmarkOperationBuilding(b *testing.B) {
 			"bio":       validators.String().Optional(),
 			"updatedAt": validators.String().Required(),
 		}).Required()
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -112,7 +112,7 @@ func BenchmarkOperationBuilding(b *testing.B) {
 func BenchmarkRouterDispatch(b *testing.B) {
 	// Simple router implementation for benchmarking
 	routes := make(map[string]http.HandlerFunc)
-	
+
 	// Register test routes
 	routePaths := []struct {
 		method string
@@ -129,14 +129,14 @@ func BenchmarkRouterDispatch(b *testing.B) {
 		{"GET", "/posts/{id}/comments"},
 		{"POST", "/posts/{id}/comments"},
 	}
-	
+
 	for _, r := range routePaths {
 		key := r.method + " " + r.path
 		routes[key] = func(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusOK)
 		}
 	}
-	
+
 	// Simple route finder
 	find := func(method, path string) (http.HandlerFunc, map[string]string, bool) {
 		// Try exact match
@@ -144,7 +144,7 @@ func BenchmarkRouterDispatch(b *testing.B) {
 		if handler, ok := routes[key]; ok {
 			return handler, nil, true
 		}
-		
+
 		// Try parameterized matches
 		if method == "GET" && len(path) > 7 {
 			if path[:7] == "/users/" {
@@ -164,7 +164,7 @@ func BenchmarkRouterDispatch(b *testing.B) {
 				}
 			}
 		}
-		
+
 		return nil, nil, false
 	}
 
@@ -196,13 +196,13 @@ func BenchmarkHandlerValidation(b *testing.B) {
 	paramsSchema := validators.Object(map[string]interface{}{
 		"id": validators.String().Pattern(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`).Required(),
 	}).Required()
-	
+
 	bodySchema := validators.Object(map[string]interface{}{
 		"name":  validators.String().Min(1).Max(100).Required(),
 		"email": validators.Email(),
 		"age":   validators.Number().Min(18).Max(120).Optional(),
 	}).Required()
-	
+
 	// Test payloads defined inline where needed
 	validResponse := `{"id":"123e4567-e89b-12d3-a456-426614174000","name":"John Doe","email":"john@example.com"}`
 
@@ -213,7 +213,7 @@ func BenchmarkHandlerValidation(b *testing.B) {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(validResponse))
 		}
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -240,7 +240,7 @@ func BenchmarkHandlerValidation(b *testing.B) {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(validResponse))
 		}
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -272,7 +272,7 @@ func BenchmarkHandlerValidation(b *testing.B) {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(validResponse))
 		}
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -292,12 +292,12 @@ func BenchmarkRequestResponseValidation(b *testing.B) {
 			"id":   validators.String().Required(),
 			"name": validators.String().Required(),
 		}).Required()
-		
+
 		data := map[string]interface{}{
 			"id":   "123",
 			"name": "Test",
 		}
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -316,7 +316,7 @@ func BenchmarkRequestResponseValidation(b *testing.B) {
 			"tags":        validators.Array(validators.String()).Optional(),
 			"preferences": validators.Object(nil).Optional(),
 		}).Required()
-		
+
 		data := map[string]interface{}{
 			"id":    "123e4567-e89b-12d3-a456-426614174000",
 			"name":  "John Doe",
@@ -329,7 +329,7 @@ func BenchmarkRequestResponseValidation(b *testing.B) {
 				"notifications": true,
 			},
 		}
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -361,7 +361,7 @@ func BenchmarkRequestResponseValidation(b *testing.B) {
 			}).Required(),
 			"total": validators.Number().Min(0).Required(),
 		}).Required()
-		
+
 		// Create large test data
 		items := make([]interface{}, 50)
 		for i := 0; i < 50; i++ {
@@ -372,7 +372,7 @@ func BenchmarkRequestResponseValidation(b *testing.B) {
 				"price":     float64(i*10 + 99),
 			}
 		}
-		
+
 		data := map[string]interface{}{
 			"orderId": "123e4567-e89b-12d3-a456-426614174000",
 			"customer": map[string]interface{}{
@@ -389,7 +389,7 @@ func BenchmarkRequestResponseValidation(b *testing.B) {
 			},
 			"total": 12345.67,
 		}
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -401,7 +401,7 @@ func BenchmarkRequestResponseValidation(b *testing.B) {
 // BenchmarkHTTPMethods tests performance across different HTTP methods
 func BenchmarkHTTPMethods(b *testing.B) {
 	methods := []string{"GET", "POST", "PUT", "PATCH", "DELETE"}
-	
+
 	for _, method := range methods {
 		b.Run(method, func(b *testing.B) {
 			b.ReportAllocs()

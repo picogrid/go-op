@@ -2,7 +2,7 @@ package validators
 
 import (
 	"testing"
-	
+
 	"github.com/picogrid/go-op"
 )
 

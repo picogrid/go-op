@@ -83,7 +83,7 @@ func (r *requiredStringSchema) GetValidationInfo() *goop.ValidationInfo {
 	return r.stringSchema.GetValidationInfo()
 }
 
-// OpenAPI generation methods for OptionalStringBuilder  
+// OpenAPI generation methods for OptionalStringBuilder
 func (o *optionalStringSchema) ToOpenAPISchema() *goop.OpenAPISchema {
 	return o.stringSchema.ToOpenAPISchema()
 }
@@ -278,7 +278,7 @@ func (obj *objectSchema) ToOpenAPISchema() *goop.OpenAPISchema {
 		if enhancedField, ok := fieldSchema.(goop.EnhancedSchema); ok {
 			propertySchema := enhancedField.ToOpenAPISchema()
 			schema.Properties[fieldName] = propertySchema
-			
+
 			// Check if this field is required
 			validationInfo := enhancedField.GetValidationInfo()
 			if validationInfo.Required {
