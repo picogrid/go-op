@@ -12,6 +12,8 @@ type objectSchema struct {
 	schema        map[string]interface{}
 	strictMode    bool
 	partialMode   bool
+	minProperties int
+	maxProperties int
 	customFunc    func(map[string]interface{}) error
 	required      bool
 	optional      bool
@@ -63,6 +65,16 @@ func (o *objectSchema) Partial() ObjectBuilder {
 	return o
 }
 
+func (o *objectSchema) MinProperties(count int) ObjectBuilder {
+	o.minProperties = count
+	return o
+}
+
+func (o *objectSchema) MaxProperties(count int) ObjectBuilder {
+	o.maxProperties = count
+	return o
+}
+
 func (o *objectSchema) Custom(fn func(map[string]interface{}) error) ObjectBuilder {
 	o.customFunc = fn
 	return o
@@ -99,6 +111,16 @@ func (r *requiredObjectSchema) Partial() RequiredObjectBuilder {
 	return r
 }
 
+func (r *requiredObjectSchema) MinProperties(count int) RequiredObjectBuilder {
+	r.minProperties = count
+	return r
+}
+
+func (r *requiredObjectSchema) MaxProperties(count int) RequiredObjectBuilder {
+	r.maxProperties = count
+	return r
+}
+
 func (r *requiredObjectSchema) Custom(fn func(map[string]interface{}) error) RequiredObjectBuilder {
 	r.customFunc = fn
 	return r
@@ -128,6 +150,16 @@ func (o *optionalObjectSchema) Strict() OptionalObjectBuilder {
 
 func (o *optionalObjectSchema) Partial() OptionalObjectBuilder {
 	o.partialMode = true
+	return o
+}
+
+func (o *optionalObjectSchema) MinProperties(count int) OptionalObjectBuilder {
+	o.minProperties = count
+	return o
+}
+
+func (o *optionalObjectSchema) MaxProperties(count int) OptionalObjectBuilder {
+	o.maxProperties = count
 	return o
 }
 
@@ -184,6 +216,20 @@ func (o *objectSchema) validate(data interface{}) error {
 	for _, key := range val.MapKeys() {
 		keyStr := fmt.Sprintf("%v", key.Interface())
 		obj[keyStr] = val.MapIndex(key).Interface()
+	}
+
+	// Properties count validation
+	propCount := len(obj)
+	if o.minProperties > 0 && propCount < o.minProperties {
+		return goop.NewValidationError(fmt.Sprintf("%v", obj), obj,
+			o.getErrorMessage(errorKeys.MinProperties,
+				fmt.Sprintf("object has too few properties, minimum is %d but got %d", o.minProperties, propCount)))
+	}
+
+	if o.maxProperties > 0 && propCount > o.maxProperties {
+		return goop.NewValidationError(fmt.Sprintf("%v", obj), obj,
+			o.getErrorMessage(errorKeys.MaxProperties,
+				fmt.Sprintf("object has too many properties, maximum is %d but got %d", o.maxProperties, propCount)))
 	}
 
 	// Strict mode: check for unknown keys

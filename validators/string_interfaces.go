@@ -10,6 +10,7 @@ type StringBuilder interface {
 	Pattern(pattern string) StringBuilder
 	Email() StringBuilder
 	URL() StringBuilder
+	Const(value string) StringBuilder
 	Custom(fn func(string) error) StringBuilder
 
 	// Example methods for OpenAPI documentation
@@ -42,6 +43,7 @@ type RequiredStringBuilder interface {
 	Pattern(pattern string) RequiredStringBuilder
 	Email() RequiredStringBuilder
 	URL() RequiredStringBuilder
+	Const(value string) RequiredStringBuilder
 	Custom(fn func(string) error) RequiredStringBuilder
 
 	// Example methods for OpenAPI documentation
@@ -75,6 +77,7 @@ type OptionalStringBuilder interface {
 	Pattern(pattern string) OptionalStringBuilder
 	Email() OptionalStringBuilder
 	URL() OptionalStringBuilder
+	Const(value string) OptionalStringBuilder
 	Custom(fn func(string) error) OptionalStringBuilder
 	Default(value string) OptionalStringBuilder // Only available on optional builders!
 

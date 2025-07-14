@@ -17,6 +17,7 @@ type stringSchema struct {
 	pattern       *regexp.Regexp
 	emailFormat   bool
 	urlFormat     bool
+	constValue    *string
 	customFunc    func(string) error
 	optional      bool
 	defaultValue  *string
@@ -80,6 +81,11 @@ func (s *stringSchema) Email() StringBuilder {
 
 func (s *stringSchema) URL() StringBuilder {
 	s.urlFormat = true
+	return s
+}
+
+func (s *stringSchema) Const(value string) StringBuilder {
+	s.constValue = &value
 	return s
 }
 
@@ -168,6 +174,11 @@ func (r *requiredStringSchema) URL() RequiredStringBuilder {
 	return r
 }
 
+func (r *requiredStringSchema) Const(value string) RequiredStringBuilder {
+	r.constValue = &value
+	return r
+}
+
 func (r *requiredStringSchema) Custom(fn func(string) error) RequiredStringBuilder {
 	r.customFunc = fn
 	return r
@@ -241,6 +252,11 @@ func (o *optionalStringSchema) Email() OptionalStringBuilder {
 
 func (o *optionalStringSchema) URL() OptionalStringBuilder {
 	o.urlFormat = true
+	return o
+}
+
+func (o *optionalStringSchema) Const(value string) OptionalStringBuilder {
+	o.constValue = &value
 	return o
 }
 
@@ -359,6 +375,12 @@ func (s *stringSchema) validate(data interface{}) error {
 	if s.urlFormat && !isValidURL(str) {
 		return goop.NewValidationError(str, str,
 			s.getErrorMessage(errorKeys.URL, "invalid URL format"))
+	}
+
+	// Const validation
+	if s.constValue != nil && str != *s.constValue {
+		return goop.NewValidationError(str, str,
+			s.getErrorMessage(errorKeys.Const, fmt.Sprintf("value must be exactly '%s'", *s.constValue)))
 	}
 
 	// Custom validation

@@ -14,6 +14,7 @@ type arraySchema struct {
 	minItems      int
 	maxItems      int
 	contains      interface{}
+	uniqueItems   bool
 	customFunc    func([]interface{}) error
 	required      bool
 	optional      bool
@@ -48,6 +49,11 @@ func (a *arraySchema) MaxItems(count int) ArrayBuilder {
 
 func (a *arraySchema) Contains(value interface{}) ArrayBuilder {
 	a.contains = value
+	return a
+}
+
+func (a *arraySchema) UniqueItems() ArrayBuilder {
+	a.uniqueItems = true
 	return a
 }
 
@@ -108,6 +114,11 @@ func (r *requiredArraySchema) Contains(value interface{}) RequiredArrayBuilder {
 	return r
 }
 
+func (r *requiredArraySchema) UniqueItems() RequiredArrayBuilder {
+	r.uniqueItems = true
+	return r
+}
+
 func (r *requiredArraySchema) Custom(fn func([]interface{}) error) RequiredArrayBuilder {
 	r.customFunc = fn
 	return r
@@ -153,6 +164,11 @@ func (o *optionalArraySchema) MaxItems(count int) OptionalArrayBuilder {
 
 func (o *optionalArraySchema) Contains(value interface{}) OptionalArrayBuilder {
 	o.contains = value
+	return o
+}
+
+func (o *optionalArraySchema) UniqueItems() OptionalArrayBuilder {
+	o.uniqueItems = true
 	return o
 }
 
@@ -276,6 +292,21 @@ func (a *arraySchema) validate(data interface{}) error {
 			return goop.NewValidationError(fmt.Sprintf("%v", arr), arr,
 				a.getErrorMessage(errorKeys.Contains,
 					fmt.Sprintf("array must contain value: %v", a.contains)))
+		}
+	}
+
+	// Unique items validation
+	if a.uniqueItems {
+		seen := make(map[string]bool)
+		for i, item := range arr {
+			// Create a string representation for comparison
+			key := fmt.Sprintf("%T:%v", item, item)
+			if seen[key] {
+				return goop.NewValidationError(fmt.Sprintf("%v", arr), arr,
+					a.getErrorMessage(errorKeys.UniqueItems,
+						fmt.Sprintf("array contains duplicate item at index %d: %v", i, item)))
+			}
+			seen[key] = true
 		}
 	}
 

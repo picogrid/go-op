@@ -8,6 +8,7 @@ type ArrayBuilder interface {
 	MinItems(count int) ArrayBuilder
 	MaxItems(count int) ArrayBuilder
 	Contains(value interface{}) ArrayBuilder
+	UniqueItems() ArrayBuilder
 	Custom(fn func([]interface{}) error) ArrayBuilder
 
 	// Example methods for OpenAPI documentation
@@ -39,6 +40,7 @@ type RequiredArrayBuilder interface {
 	MinItems(count int) RequiredArrayBuilder
 	MaxItems(count int) RequiredArrayBuilder
 	Contains(value interface{}) RequiredArrayBuilder
+	UniqueItems() RequiredArrayBuilder
 	Custom(fn func([]interface{}) error) RequiredArrayBuilder
 
 	// Example methods for OpenAPI documentation
@@ -68,6 +70,7 @@ type OptionalArrayBuilder interface {
 	MinItems(count int) OptionalArrayBuilder
 	MaxItems(count int) OptionalArrayBuilder
 	Contains(value interface{}) OptionalArrayBuilder
+	UniqueItems() OptionalArrayBuilder
 	Custom(fn func([]interface{}) error) OptionalArrayBuilder
 	Default(value []interface{}) OptionalArrayBuilder // Only available on optional builders!
 

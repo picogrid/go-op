@@ -743,7 +743,11 @@ func main() {
 				},
 			}).
 			Required(),
-		"quantity": validators.Number().Min(1).Max(100).
+		"quantity": validators.Number().
+			Integer().            // Ensure whole units only
+			MultipleOf(1.0).      // OpenAPI 3.1: Must be whole items
+			ExclusiveMin(0.0).    // OpenAPI 3.1: Must be at least 1
+			ExclusiveMax(1000.0). // OpenAPI 3.1: Must be under 1000
 			Examples(map[string]validators.ExampleObject{
 				"single": {
 					Summary:     "Single item",
@@ -856,9 +860,9 @@ func main() {
 	orderItemSchema := validators.Object(map[string]interface{}{
 		"product_id": validators.String().Min(1).Required(),
 		"name":       validators.String().Min(1).Required(),
-		"quantity":   validators.Number().Min(1).Required(),
-		"price":      validators.Number().Min(0).Required(),
-		"subtotal":   validators.Number().Min(0).Required(),
+		"quantity":   validators.Number().Integer().MultipleOf(1.0).Min(1).Required(),   // OpenAPI 3.1: Whole units
+		"price":      validators.Number().MultipleOf(0.01).ExclusiveMin(0.0).Required(), // OpenAPI 3.1: Currency precision, positive
+		"subtotal":   validators.Number().MultipleOf(0.01).Min(0.0).Required(),          // OpenAPI 3.1: Currency precision
 	}).Required()
 
 	orderResponseSchema := validators.Object(map[string]interface{}{
@@ -866,7 +870,7 @@ func main() {
 		"user_id":          validators.String().Min(1).Required(),
 		"status":           validators.String().Required(),
 		"items":            validators.Array(orderItemSchema).Required(),
-		"total_amount":     validators.Number().Min(0).Required(),
+		"total_amount":     validators.Number().MultipleOf(0.01).Min(0.0).Required(), // OpenAPI 3.1: Currency precision
 		"currency":         validators.String().Min(3).Max(3).Required(),
 		"shipping_address": addressSchema,
 		"billing_address":  addressSchema,
@@ -977,6 +981,188 @@ func main() {
 			orderResponseSchema,
 		))
 
+	// ===== Pricing Calculator Operation with OpenAPI 3.1 features =====
+	pricingCalculatorRequestSchema := validators.Object(map[string]interface{}{
+		"calculation_type": validators.String().Const("order_total").Required().
+			Example("order_total"),
+		"base_currency": validators.String().Const("USD").Required().
+			Example("USD"),
+		"items": validators.Array(validators.Object(map[string]interface{}{
+			"unit_price": validators.Number().
+				MultipleOf(0.01).       // OpenAPI 3.1: Currency precision (cents)
+				ExclusiveMin(0.0).      // OpenAPI 3.1: Must be positive
+				ExclusiveMax(100000.0). // OpenAPI 3.1: Under $100k per unit
+				Required().
+				Example(29.99),
+			"quantity": validators.Number().
+				Integer().             // Whole units only
+				MultipleOf(1.0).       // OpenAPI 3.1: Must be whole items
+				ExclusiveMin(0.0).     // OpenAPI 3.1: Must be at least 1
+				ExclusiveMax(10000.0). // OpenAPI 3.1: Under 10k units
+				Required().
+				Example(2),
+			"discount_percent": validators.Number().
+				MultipleOf(0.1).     // OpenAPI 3.1: Discount in 0.1% increments
+				Min(0.0).            // Min 0%
+				ExclusiveMax(100.0). // OpenAPI 3.1: Must be under 100%
+				Optional().
+				Default(0.0).
+				Example(10.0),
+		}).Required()).
+			UniqueItems().            // OpenAPI 3.1: No duplicate pricing entries
+			MinItems(1).MaxItems(50). // Reasonable limits
+			Required(),
+		"tax_rate": validators.Number().
+			MultipleOf(0.001). // OpenAPI 3.1: Tax rate precision (0.1%)
+			Min(0.0).          // No negative tax
+			ExclusiveMax(1.0). // OpenAPI 3.1: Under 100% tax
+			Optional().
+			Default(0.0875). // Default 8.75% tax
+			Example(0.0875),
+		"shipping_cost": validators.Number().
+			MultipleOf(0.01).     // OpenAPI 3.1: Currency precision
+			Min(0.0).             // Free shipping allowed
+			ExclusiveMax(1000.0). // OpenAPI 3.1: Under $1000 shipping
+			Optional().
+			Default(0.0).
+			Example(9.99),
+		"currency_settings": validators.Object(map[string]interface{}{
+			"decimal_places": validators.Number().Min(2).Max(2).Required(), // Always 2 for currency
+			"rounding_mode":  validators.String().Const("round_half_up").Required(),
+		}).
+			MinProperties(2).MaxProperties(2). // OpenAPI 3.1: Exactly 2 properties required
+			Required(),
+	}).Example(map[string]interface{}{
+		"calculation_type": "order_total",
+		"base_currency":    "USD",
+		"items": []interface{}{
+			map[string]interface{}{
+				"unit_price":       29.99,
+				"quantity":         2,
+				"discount_percent": 10.0,
+			},
+			map[string]interface{}{
+				"unit_price":       15.50,
+				"quantity":         1,
+				"discount_percent": 0.0,
+			},
+		},
+		"tax_rate":      0.0875,
+		"shipping_cost": 9.99,
+		"currency_settings": map[string]interface{}{
+			"decimal_places": 2,
+			"rounding_mode":  "round_half_up",
+		},
+	}).Required()
+
+	pricingCalculatorResponseSchema := validators.Object(map[string]interface{}{
+		"calculation_type": validators.String().Const("order_total").Required(),
+		"base_currency":    validators.String().Const("USD").Required(),
+		"breakdown": validators.Object(map[string]interface{}{
+			"subtotal":            validators.Number().MultipleOf(0.01).Required(),
+			"total_discount":      validators.Number().MultipleOf(0.01).Required(),
+			"discounted_subtotal": validators.Number().MultipleOf(0.01).Required(),
+			"tax_amount":          validators.Number().MultipleOf(0.01).Required(),
+			"shipping_cost":       validators.Number().MultipleOf(0.01).Required(),
+			"final_total":         validators.Number().MultipleOf(0.01).Required(),
+		}).
+			MinProperties(6).MaxProperties(6). // OpenAPI 3.1: Exactly 6 breakdown fields
+			Required(),
+		"item_details": validators.Array(validators.Object(map[string]interface{}{
+			"subtotal_before_discount": validators.Number().MultipleOf(0.01).Required(),
+			"discount_amount":          validators.Number().MultipleOf(0.01).Required(),
+			"subtotal_after_discount":  validators.Number().MultipleOf(0.01).Required(),
+		}).Required()).
+			UniqueItems(). // OpenAPI 3.1: No duplicate item calculations
+			Required(),
+	}).Example(map[string]interface{}{
+		"calculation_type": "order_total",
+		"base_currency":    "USD",
+		"breakdown": map[string]interface{}{
+			"subtotal":            75.48,
+			"total_discount":      5.99,
+			"discounted_subtotal": 69.49,
+			"tax_amount":          6.08,
+			"shipping_cost":       9.99,
+			"final_total":         85.56,
+		},
+		"item_details": []interface{}{
+			map[string]interface{}{
+				"subtotal_before_discount": 59.98,
+				"discount_amount":          5.99,
+				"subtotal_after_discount":  53.99,
+			},
+			map[string]interface{}{
+				"subtotal_before_discount": 15.50,
+				"discount_amount":          0.00,
+				"subtotal_after_discount":  15.50,
+			},
+		},
+	}).Required()
+
+	calculatePricingOp := operations.NewSimple().
+		POST("/pricing/calculate").
+		Summary("Calculate order pricing with advanced OpenAPI 3.1 validation").
+		Description("Calculates detailed order pricing including taxes, discounts, and shipping using OpenAPI 3.1 features: "+
+			"const validation for fixed values, multipleOf for currency precision, exclusiveMin/Max for bounds, "+
+			"uniqueItems for arrays, and minProperties/maxProperties for objects.").
+		Tags("pricing", "calculation", "openapi31-example").
+		WithBody(pricingCalculatorRequestSchema).
+		WithResponse(pricingCalculatorResponseSchema).
+		Handler(operations.CreateValidatedHandler(
+			func(ctx context.Context, params struct{}, query struct{}, body map[string]interface{}) (map[string]interface{}, error) {
+				// Simulate complex pricing calculation
+				items := body["items"].([]interface{})
+				taxRate := body["tax_rate"].(float64)
+				shippingCost := body["shipping_cost"].(float64)
+
+				var subtotal, totalDiscount float64
+				var itemDetails []interface{}
+
+				for _, item := range items {
+					itemMap := item.(map[string]interface{})
+					unitPrice := itemMap["unit_price"].(float64)
+					quantity := itemMap["quantity"].(float64)
+					discountPercent := itemMap["discount_percent"].(float64)
+
+					subtotalBeforeDiscount := unitPrice * quantity
+					discountAmount := subtotalBeforeDiscount * (discountPercent / 100.0)
+					subtotalAfterDiscount := subtotalBeforeDiscount - discountAmount
+
+					subtotal += subtotalBeforeDiscount
+					totalDiscount += discountAmount
+
+					itemDetails = append(itemDetails, map[string]interface{}{
+						"subtotal_before_discount": subtotalBeforeDiscount,
+						"discount_amount":          discountAmount,
+						"subtotal_after_discount":  subtotalAfterDiscount,
+					})
+				}
+
+				discountedSubtotal := subtotal - totalDiscount
+				taxAmount := discountedSubtotal * taxRate
+				finalTotal := discountedSubtotal + taxAmount + shippingCost
+
+				return map[string]interface{}{
+					"calculation_type": "order_total",
+					"base_currency":    "USD",
+					"breakdown": map[string]interface{}{
+						"subtotal":            subtotal,
+						"total_discount":      totalDiscount,
+						"discounted_subtotal": discountedSubtotal,
+						"tax_amount":          taxAmount,
+						"shipping_cost":       shippingCost,
+						"final_total":         finalTotal,
+					},
+					"item_details": itemDetails,
+				}, nil
+			},
+			nil,
+			nil,
+			pricingCalculatorRequestSchema,
+			pricingCalculatorResponseSchema,
+		))
+
 	// Register operations
 	router.Register(createOrderOp)
 	router.Register(getOrderOp)
@@ -985,6 +1171,7 @@ func main() {
 	router.Register(listOrdersOp)
 	router.Register(getAnalyticsOp)
 	router.Register(createAdvancedOrderOp) // OneOf showcase operation
+	router.Register(calculatePricingOp)    // OpenAPI 3.1 features showcase
 
 	// Health check
 	engine.GET("/health", func(c *gin.Context) {

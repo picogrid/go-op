@@ -7,6 +7,9 @@ type NumberBuilder interface {
 	// Configuration methods - these return NumberBuilder to allow chaining
 	Min(value float64) NumberBuilder
 	Max(value float64) NumberBuilder
+	ExclusiveMin(value float64) NumberBuilder
+	ExclusiveMax(value float64) NumberBuilder
+	MultipleOf(value float64) NumberBuilder
 	Integer() NumberBuilder
 	Positive() NumberBuilder
 	Negative() NumberBuilder
@@ -39,6 +42,9 @@ type RequiredNumberBuilder interface {
 	// Configuration methods - these return RequiredNumberBuilder to maintain state
 	Min(value float64) RequiredNumberBuilder
 	Max(value float64) RequiredNumberBuilder
+	ExclusiveMin(value float64) RequiredNumberBuilder
+	ExclusiveMax(value float64) RequiredNumberBuilder
+	MultipleOf(value float64) RequiredNumberBuilder
 	Integer() RequiredNumberBuilder
 	Positive() RequiredNumberBuilder
 	Negative() RequiredNumberBuilder
@@ -72,6 +78,9 @@ type OptionalNumberBuilder interface {
 	// Configuration methods - these return OptionalNumberBuilder to maintain state
 	Min(value float64) OptionalNumberBuilder
 	Max(value float64) OptionalNumberBuilder
+	ExclusiveMin(value float64) OptionalNumberBuilder
+	ExclusiveMax(value float64) OptionalNumberBuilder
+	MultipleOf(value float64) OptionalNumberBuilder
 	Integer() OptionalNumberBuilder
 	Positive() OptionalNumberBuilder
 	Negative() OptionalNumberBuilder

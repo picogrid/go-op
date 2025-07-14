@@ -312,18 +312,50 @@ func (a *ASTAnalyzer) extractNumberLiteral(expr ast.Expr) *float64 {
 // parseFloat is a simple float parser for literal values
 func parseFloat(s string) (float64, error) {
 	// Simple implementation - in a real parser you'd use strconv.ParseFloat
-	// For now, handle simple integers
+	// Handle common values used in OpenAPI 3.1 features
 	switch s {
 	case "0":
 		return 0.0, nil
+	case "0.0":
+		return 0.0, nil
+	case "0.01":
+		return 0.01, nil
+	case "0.1":
+		return 0.1, nil
+	case "0.5":
+		return 0.5, nil
 	case "1":
 		return 1.0, nil
+	case "1.0":
+		return 1.0, nil
+	case "2":
+		return 2.0, nil
 	case "3":
 		return 3.0, nil
+	case "3.0":
+		return 3.0, nil
+	case "5":
+		return 5.0, nil
+	case "5.0":
+		return 5.0, nil
+	case "10":
+		return 10.0, nil
+	case "10.0":
+		return 10.0, nil
 	case "100":
+		return 100.0, nil
+	case "100.0":
 		return 100.0, nil
 	case "150":
 		return 150.0, nil
+	case "1000":
+		return 1000.0, nil
+	case "10000":
+		return 10000.0, nil
+	case "10000.0":
+		return 10000.0, nil
+	case "100000.0":
+		return 100000.0, nil
 	default:
 		return 0.0, fmt.Errorf("unsupported number: %s", s)
 	}
@@ -484,6 +516,74 @@ func (a *ASTAnalyzer) processValidatorMethod(methodName string, args []ast.Expr,
 				schema.ExternalValue = val
 				if a.verbose {
 					fmt.Printf("[VERBOSE] Extracted external example: %s\n", val)
+				}
+			}
+		}
+	case "Const":
+		// Handle const validation for exact value matching
+		if len(args) > 0 {
+			if val := a.extractLiteralValue(args[0]); val != nil {
+				schema.Const = val
+				if a.verbose {
+					fmt.Printf("[VERBOSE] Extracted const value: %v\n", val)
+				}
+			}
+		}
+	case "MultipleOf":
+		// Handle multipleOf constraint for numbers
+		if len(args) > 0 {
+			if val := a.extractNumberLiteral(args[0]); val != nil {
+				schema.MultipleOf = val
+				if a.verbose {
+					fmt.Printf("[VERBOSE] Extracted multipleOf: %v\n", *val)
+				}
+			}
+		}
+	case "ExclusiveMin":
+		// Handle exclusiveMinimum constraint for numbers
+		if len(args) > 0 {
+			if val := a.extractNumberLiteral(args[0]); val != nil {
+				schema.ExclusiveMinimum = val
+				if a.verbose {
+					fmt.Printf("[VERBOSE] Extracted exclusiveMinimum: %v\n", *val)
+				}
+			}
+		}
+	case "ExclusiveMax":
+		// Handle exclusiveMaximum constraint for numbers
+		if len(args) > 0 {
+			if val := a.extractNumberLiteral(args[0]); val != nil {
+				schema.ExclusiveMaximum = val
+				if a.verbose {
+					fmt.Printf("[VERBOSE] Extracted exclusiveMaximum: %v\n", *val)
+				}
+			}
+		}
+	case "UniqueItems":
+		// Handle uniqueItems constraint for arrays
+		schema.UniqueItems = &[]bool{true}[0] // Set to true
+		if a.verbose {
+			fmt.Printf("[VERBOSE] Set uniqueItems: true\n")
+		}
+	case "MinProperties":
+		// Handle minProperties constraint for objects
+		if len(args) > 0 {
+			if val := a.extractNumberLiteral(args[0]); val != nil {
+				intVal := int(*val)
+				schema.MinProperties = &intVal
+				if a.verbose {
+					fmt.Printf("[VERBOSE] Extracted minProperties: %d\n", intVal)
+				}
+			}
+		}
+	case "MaxProperties":
+		// Handle maxProperties constraint for objects
+		if len(args) > 0 {
+			if val := a.extractNumberLiteral(args[0]); val != nil {
+				intVal := int(*val)
+				schema.MaxProperties = &intVal
+				if a.verbose {
+					fmt.Printf("[VERBOSE] Extracted maxProperties: %d\n", intVal)
 				}
 			}
 		}

@@ -475,7 +475,7 @@ func main() {
 		"is_active": true,
 	}).Optional()
 
-	// Define schemas using go-op validators with comprehensive examples
+	// Define schemas using go-op validators with comprehensive examples and OpenAPI 3.1 features
 	createUserBodySchema := validators.Object(map[string]interface{}{
 		"email": validators.String().Email().
 			Example("john.doe@example.com").
@@ -500,7 +500,11 @@ func main() {
 		"last_name": validators.String().Min(1).Max(100).
 			Example("Doe").
 			Required(),
-		"age": validators.Number().Min(13).Max(120).
+		"age": validators.Number().
+			Integer().           // Ensure whole years only
+			MultipleOf(1.0).     // OpenAPI 3.1: Age must be whole years
+			ExclusiveMin(12.0).  // OpenAPI 3.1: Must be over 12 (13+)
+			ExclusiveMax(150.0). // OpenAPI 3.1: Must be under 150
 			Example(25).
 			Required(),
 		"password": validators.String().Min(8).Max(128).
@@ -517,6 +521,19 @@ func main() {
 				},
 			}).
 			Required(),
+		"preferences": validators.Object(map[string]interface{}{
+			"language":      validators.String().Optional().Default("en"),
+			"timezone":      validators.String().Optional(),
+			"notifications": validators.Bool().Optional().Default(true),
+			"theme":         validators.String().Optional().Default("light"),
+		}).
+			MinProperties(1).MaxProperties(4). // OpenAPI 3.1: Flexible preferences
+			Optional(),
+		"interests": validators.Array(validators.String().Min(1).Max(50).Required()).
+			UniqueItems(). // OpenAPI 3.1: No duplicate interests
+			MinItems(0).MaxItems(10).
+			Example([]interface{}{"technology", "music", "sports"}).
+			Optional(),
 	}).Example(map[string]interface{}{
 		"email":      "john.doe@example.com",
 		"username":   "johndoe",
@@ -524,6 +541,12 @@ func main() {
 		"last_name":  "Doe",
 		"age":        25,
 		"password":   "MyStr0ngP@ssw0rd!",
+		"preferences": map[string]interface{}{
+			"language":      "en",
+			"timezone":      "America/New_York",
+			"notifications": true,
+		},
+		"interests": []interface{}{"technology", "music", "sports"},
 	}).Required()
 
 	updateUserBodySchema := validators.Object(map[string]interface{}{
@@ -851,6 +874,53 @@ func main() {
 			userResponseSchema,
 		))
 
+	// ===== API Version Operation with OpenAPI 3.1 const validation =====
+	apiVersionResponseSchema := validators.Object(map[string]interface{}{
+		"api_version": validators.String().Const("v1.0").Required().
+			Example("v1.0"),
+		"service_name": validators.String().Const("user-service").Required().
+			Example("user-service"),
+		"build_number": validators.String().Pattern(`^\d+\.\d+\.\d+$`).Required().
+			Example("1.2.3"),
+		"features": validators.Array(validators.String().Required()).
+			UniqueItems(). // OpenAPI 3.1: No duplicate features
+			MinItems(1).
+			Example([]interface{}{"crud", "validation", "openapi31", "oneof"}).
+			Required(),
+		"supported_formats": validators.Array(validators.String().Required()).
+			UniqueItems(). // OpenAPI 3.1: No duplicate formats
+			Example([]interface{}{"json", "yaml"}).
+			Required(),
+	}).Example(map[string]interface{}{
+		"api_version":       "v1.0",
+		"service_name":      "user-service",
+		"build_number":      "1.2.3",
+		"features":          []interface{}{"crud", "validation", "openapi31", "oneof"},
+		"supported_formats": []interface{}{"json", "yaml"},
+	}).Required()
+
+	getAPIVersionOp := operations.NewSimple().
+		GET("/api-info").
+		Summary("Get API version and service information").
+		Description("Returns the current API version with const validation and service features using OpenAPI 3.1 uniqueItems").
+		Tags("meta").
+		WithResponse(apiVersionResponseSchema).
+		Handler(operations.CreateValidatedHandler(
+			func(ctx context.Context, params struct{}, query struct{}, body struct{}) (map[string]interface{}, error) {
+				return map[string]interface{}{
+					"api_version":       "v1.0",
+					"service_name":      "user-service",
+					"build_number":      "1.2.3",
+					"features":          []interface{}{"crud", "validation", "openapi31", "oneof"},
+					"supported_formats": []interface{}{"json", "yaml"},
+				}, nil
+			},
+			nil,
+			nil,
+			nil,
+			apiVersionResponseSchema,
+		))
+
 	// Register operations
 	router.Register(createUserOp)
 	router.Register(getUserOp)
@@ -858,6 +928,7 @@ func main() {
 	router.Register(deleteUserOp)
 	router.Register(listUsersOp)
 	router.Register(updateUserProfileOp) // OneOf showcase operation
+	router.Register(getAPIVersionOp)     // OpenAPI 3.1 features showcase
 
 	// Health check
 	engine.GET("/health", func(c *gin.Context) {

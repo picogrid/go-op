@@ -58,6 +58,15 @@ type SchemaDefinition struct {
 	Examples      map[string]ExampleObject
 	ExternalValue string
 
+	// OpenAPI 3.1 / JSON Schema 2020-12 fields
+	Const            interface{} `json:"const,omitempty" yaml:"const,omitempty"`
+	MultipleOf       *float64    `json:"multipleOf,omitempty" yaml:"multipleOf,omitempty"`
+	ExclusiveMinimum *float64    `json:"exclusiveMinimum,omitempty" yaml:"exclusiveMinimum,omitempty"`
+	ExclusiveMaximum *float64    `json:"exclusiveMaximum,omitempty" yaml:"exclusiveMaximum,omitempty"`
+	UniqueItems      *bool       `json:"uniqueItems,omitempty" yaml:"uniqueItems,omitempty"`
+	MinProperties    *int        `json:"minProperties,omitempty" yaml:"minProperties,omitempty"`
+	MaxProperties    *int        `json:"maxProperties,omitempty" yaml:"maxProperties,omitempty"`
+
 	// Schema composition fields for OpenAPI 3.1
 	OneOf []*SchemaDefinition
 	AllOf []*SchemaDefinition
@@ -319,6 +328,29 @@ func (g *Generator) convertSchemaToOpenAPI(schema *SchemaDefinition) *goop.OpenA
 	}
 	if schema.Maximum != nil {
 		openAPISchema.Maximum = schema.Maximum
+	}
+
+	// Add OpenAPI 3.1 / JSON Schema 2020-12 constraints
+	if schema.Const != nil {
+		openAPISchema.Const = schema.Const
+	}
+	if schema.MultipleOf != nil {
+		openAPISchema.MultipleOf = schema.MultipleOf
+	}
+	if schema.ExclusiveMinimum != nil {
+		openAPISchema.ExclusiveMinimum = schema.ExclusiveMinimum
+	}
+	if schema.ExclusiveMaximum != nil {
+		openAPISchema.ExclusiveMaximum = schema.ExclusiveMaximum
+	}
+	if schema.UniqueItems != nil {
+		openAPISchema.UniqueItems = schema.UniqueItems
+	}
+	if schema.MinProperties != nil {
+		openAPISchema.MinProperties = schema.MinProperties
+	}
+	if schema.MaxProperties != nil {
+		openAPISchema.MaxProperties = schema.MaxProperties
 	}
 
 	// Handle object properties

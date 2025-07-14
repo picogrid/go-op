@@ -10,19 +10,22 @@ import (
 // Core number schema struct (unexported)
 // This contains all the validation configuration and is wrapped by state-specific types
 type numberSchema struct {
-	minValue      *float64
-	maxValue      *float64
-	integerOnly   bool
-	positiveOnly  bool
-	negativeOnly  bool
-	customFunc    func(float64) error
-	required      bool
-	optional      bool
-	defaultValue  *float64
-	customError   map[string]string
-	example       interface{}
-	examples      map[string]ExampleObject
-	externalValue string
+	minValue          *float64
+	maxValue          *float64
+	exclusiveMinValue *float64
+	exclusiveMaxValue *float64
+	multipleOfValue   *float64
+	integerOnly       bool
+	positiveOnly      bool
+	negativeOnly      bool
+	customFunc        func(float64) error
+	required          bool
+	optional          bool
+	defaultValue      *float64
+	customError       map[string]string
+	example           interface{}
+	examples          map[string]ExampleObject
+	externalValue     string
 }
 
 // State wrapper types for compile-time safety
@@ -44,6 +47,21 @@ func (n *numberSchema) Min(value float64) NumberBuilder {
 
 func (n *numberSchema) Max(value float64) NumberBuilder {
 	n.maxValue = &value
+	return n
+}
+
+func (n *numberSchema) ExclusiveMin(value float64) NumberBuilder {
+	n.exclusiveMinValue = &value
+	return n
+}
+
+func (n *numberSchema) ExclusiveMax(value float64) NumberBuilder {
+	n.exclusiveMaxValue = &value
+	return n
+}
+
+func (n *numberSchema) MultipleOf(value float64) NumberBuilder {
+	n.multipleOfValue = &value
 	return n
 }
 
@@ -119,6 +137,21 @@ func (r *requiredNumberSchema) Max(value float64) RequiredNumberBuilder {
 	return r
 }
 
+func (r *requiredNumberSchema) ExclusiveMin(value float64) RequiredNumberBuilder {
+	r.exclusiveMinValue = &value
+	return r
+}
+
+func (r *requiredNumberSchema) ExclusiveMax(value float64) RequiredNumberBuilder {
+	r.exclusiveMaxValue = &value
+	return r
+}
+
+func (r *requiredNumberSchema) MultipleOf(value float64) RequiredNumberBuilder {
+	r.multipleOfValue = &value
+	return r
+}
+
 func (r *requiredNumberSchema) Integer() RequiredNumberBuilder {
 	r.integerOnly = true
 	return r
@@ -179,6 +212,21 @@ func (o *optionalNumberSchema) Min(value float64) OptionalNumberBuilder {
 
 func (o *optionalNumberSchema) Max(value float64) OptionalNumberBuilder {
 	o.maxValue = &value
+	return o
+}
+
+func (o *optionalNumberSchema) ExclusiveMin(value float64) OptionalNumberBuilder {
+	o.exclusiveMinValue = &value
+	return o
+}
+
+func (o *optionalNumberSchema) ExclusiveMax(value float64) OptionalNumberBuilder {
+	o.exclusiveMaxValue = &value
+	return o
+}
+
+func (o *optionalNumberSchema) MultipleOf(value float64) OptionalNumberBuilder {
+	o.multipleOfValue = &value
 	return o
 }
 
@@ -308,6 +356,29 @@ func (n *numberSchema) validate(data interface{}) error {
 		return goop.NewValidationError(fmt.Sprintf("%v", num), num,
 			n.getErrorMessage(errorKeys.Max,
 				fmt.Sprintf("value is too large, maximum is %g", *n.maxValue)))
+	}
+
+	// Exclusive range validations
+	if n.exclusiveMinValue != nil && num <= *n.exclusiveMinValue {
+		return goop.NewValidationError(fmt.Sprintf("%v", num), num,
+			n.getErrorMessage(errorKeys.ExclusiveMin,
+				fmt.Sprintf("value must be greater than %g", *n.exclusiveMinValue)))
+	}
+
+	if n.exclusiveMaxValue != nil && num >= *n.exclusiveMaxValue {
+		return goop.NewValidationError(fmt.Sprintf("%v", num), num,
+			n.getErrorMessage(errorKeys.ExclusiveMax,
+				fmt.Sprintf("value must be less than %g", *n.exclusiveMaxValue)))
+	}
+
+	// Multiple validation
+	if n.multipleOfValue != nil && *n.multipleOfValue != 0 {
+		remainder := math.Mod(num, *n.multipleOfValue)
+		if math.Abs(remainder) > 1e-10 { // Use small epsilon for floating point comparison
+			return goop.NewValidationError(fmt.Sprintf("%v", num), num,
+				n.getErrorMessage(errorKeys.MultipleOf,
+					fmt.Sprintf("value must be a multiple of %g", *n.multipleOfValue)))
+		}
 	}
 
 	// Sign validations

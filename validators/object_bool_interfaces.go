@@ -7,6 +7,8 @@ type ObjectBuilder interface {
 	// Configuration methods - these return ObjectBuilder to allow chaining
 	Strict() ObjectBuilder  // Only allow defined keys
 	Partial() ObjectBuilder // All keys become optional
+	MinProperties(count int) ObjectBuilder
+	MaxProperties(count int) ObjectBuilder
 	Custom(fn func(map[string]interface{}) error) ObjectBuilder
 
 	// Example methods for OpenAPI documentation
@@ -31,6 +33,8 @@ type RequiredObjectBuilder interface {
 	// Configuration methods - these return RequiredObjectBuilder to maintain state
 	Strict() RequiredObjectBuilder
 	Partial() RequiredObjectBuilder
+	MinProperties(count int) RequiredObjectBuilder
+	MaxProperties(count int) RequiredObjectBuilder
 	Custom(fn func(map[string]interface{}) error) RequiredObjectBuilder
 
 	// Example methods for OpenAPI documentation
@@ -56,6 +60,8 @@ type OptionalObjectBuilder interface {
 	// Configuration methods - these return OptionalObjectBuilder to maintain state
 	Strict() OptionalObjectBuilder
 	Partial() OptionalObjectBuilder
+	MinProperties(count int) OptionalObjectBuilder
+	MaxProperties(count int) OptionalObjectBuilder
 	Custom(fn func(map[string]interface{}) error) OptionalObjectBuilder
 	Default(value map[string]interface{}) OptionalObjectBuilder // Only available on optional builders!
 
