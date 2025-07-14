@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/picogrid/go-op"
+	goop "github.com/picogrid/go-op"
 )
 
 // Core number schema struct (unexported)
@@ -107,38 +107,38 @@ func (n *numberSchema) WithNegativeMessage(message string) NumberBuilder {
 // These methods return RequiredNumberBuilder to maintain the required state
 
 func (r *requiredNumberSchema) Min(value float64) RequiredNumberBuilder {
-	r.numberSchema.minValue = &value
+	r.minValue = &value
 	return r
 }
 
 func (r *requiredNumberSchema) Max(value float64) RequiredNumberBuilder {
-	r.numberSchema.maxValue = &value
+	r.maxValue = &value
 	return r
 }
 
 func (r *requiredNumberSchema) Integer() RequiredNumberBuilder {
-	r.numberSchema.integerOnly = true
+	r.integerOnly = true
 	return r
 }
 
 func (r *requiredNumberSchema) Positive() RequiredNumberBuilder {
-	r.numberSchema.positiveOnly = true
+	r.positiveOnly = true
 	return r
 }
 
 func (r *requiredNumberSchema) Negative() RequiredNumberBuilder {
-	r.numberSchema.negativeOnly = true
+	r.negativeOnly = true
 	return r
 }
 
 func (r *requiredNumberSchema) Custom(fn func(float64) error) RequiredNumberBuilder {
-	r.numberSchema.customFunc = fn
+	r.customFunc = fn
 	return r
 }
 
 // Error message methods for RequiredNumberBuilder
 func (r *requiredNumberSchema) WithMessage(validationType, message string) RequiredNumberBuilder {
-	r.numberSchema.customError[validationType] = message
+	r.customError[validationType] = message
 	return r
 }
 
@@ -170,44 +170,44 @@ func (r *requiredNumberSchema) WithRequiredMessage(message string) RequiredNumbe
 // These methods return OptionalNumberBuilder to maintain the optional state
 
 func (o *optionalNumberSchema) Min(value float64) OptionalNumberBuilder {
-	o.numberSchema.minValue = &value
+	o.minValue = &value
 	return o
 }
 
 func (o *optionalNumberSchema) Max(value float64) OptionalNumberBuilder {
-	o.numberSchema.maxValue = &value
+	o.maxValue = &value
 	return o
 }
 
 func (o *optionalNumberSchema) Integer() OptionalNumberBuilder {
-	o.numberSchema.integerOnly = true
+	o.integerOnly = true
 	return o
 }
 
 func (o *optionalNumberSchema) Positive() OptionalNumberBuilder {
-	o.numberSchema.positiveOnly = true
+	o.positiveOnly = true
 	return o
 }
 
 func (o *optionalNumberSchema) Negative() OptionalNumberBuilder {
-	o.numberSchema.negativeOnly = true
+	o.negativeOnly = true
 	return o
 }
 
 func (o *optionalNumberSchema) Custom(fn func(float64) error) OptionalNumberBuilder {
-	o.numberSchema.customFunc = fn
+	o.customFunc = fn
 	return o
 }
 
 // Default is only available on optional builders - this is the key DX improvement!
 func (o *optionalNumberSchema) Default(value float64) OptionalNumberBuilder {
-	o.numberSchema.defaultValue = &value
+	o.defaultValue = &value
 	return o
 }
 
 // Error message methods for OptionalNumberBuilder
 func (o *optionalNumberSchema) WithMessage(validationType, message string) OptionalNumberBuilder {
-	o.numberSchema.customError[validationType] = message
+	o.customError[validationType] = message
 	return o
 }
 
@@ -233,11 +233,11 @@ func (o *optionalNumberSchema) WithNegativeMessage(message string) OptionalNumbe
 
 // Validation methods - these are the final methods in the builder chain
 func (r *requiredNumberSchema) Validate(data interface{}) error {
-	return r.numberSchema.validate(data)
+	return r.validate(data)
 }
 
 func (o *optionalNumberSchema) Validate(data interface{}) error {
-	return o.numberSchema.validate(data)
+	return o.validate(data)
 }
 
 // Core validation logic (shared between required and optional)

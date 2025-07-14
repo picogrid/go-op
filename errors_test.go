@@ -51,10 +51,8 @@ func TestNewValidationError(t *testing.T) {
 		// For maps, we need to check content rather than direct comparison
 		if errMap, ok := err.Value.(map[string]interface{}); !ok {
 			t.Errorf("Expected Value to be map[string]interface{}, got %T", err.Value)
-		} else {
-			if errMap["nested"] != "value" || errMap["number"] != 42 {
-				t.Errorf("Expected Value to contain correct map content, got %v", errMap)
-			}
+		} else if errMap["nested"] != "value" || errMap["number"] != 42 {
+			t.Errorf("Expected Value to contain correct map content, got %v", errMap)
 		}
 	})
 }

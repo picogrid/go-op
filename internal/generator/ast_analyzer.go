@@ -60,10 +60,8 @@ func (a *ASTAnalyzer) ExtractOperations(file *ast.File, filename string) []Opera
 					}
 				}
 			}
-		} else {
-			if a.verbose {
-				fmt.Printf("[VERBOSE] Found other declaration type: %T\n", decl)
-			}
+		} else if a.verbose {
+			fmt.Printf("[VERBOSE] Found other declaration type: %T\n", decl)
 		}
 	}
 
@@ -508,10 +506,8 @@ func (a *ASTAnalyzer) analyzePropertyValue(expr ast.Expr, propSchema *SchemaDefi
 	if callExpr, ok := expr.(*ast.CallExpr); ok {
 		// This is a validator call chain like validators.String().Min(1)
 		a.analyzeValidatorCall(callExpr, propSchema)
-	} else {
-		if a.verbose {
-			fmt.Printf("[VERBOSE] Unknown property value type: %T\n", expr)
-		}
+	} else if a.verbose {
+		fmt.Printf("[VERBOSE] Unknown property value type: %T\n", expr)
 	}
 }
 

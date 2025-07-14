@@ -1,6 +1,6 @@
 # Makefile for go-op development and maintenance
 
-.PHONY: help build test test-verbose test-race test-coverage benchmark lint fmt clean install-tools dev-setup release-check
+.PHONY: help build test test-verbose test-race test-coverage benchmark lint fmt clean install-tools dev-setup release-check validate-openapi
 
 # Test packages (excluding examples and cmd/example)
 TEST_PACKAGES := $(shell go list ./... | grep -v -E '(cmd/example|examples)')
@@ -98,6 +98,8 @@ install-tools: ## Install development tools
 	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	@go install github.com/securego/gosec/v2/cmd/gosec@latest
 	@go install github.com/sonatypecommunity/nancy@latest
+	@echo "Installing OpenAPI validation tools..."
+	@npm install -g @redocly/cli
 	@echo "✓ Development tools installed"
 
 dev-setup: install-tools ## Set up development environment
@@ -150,6 +152,31 @@ examples-test: ## Test that examples compile
 	@go build ./examples/...
 	@echo "✓ Examples compile successfully"
 
+# OpenAPI validation
+validate-openapi: ## Validate OpenAPI specifications locally
+	@echo "Running local OpenAPI validation..."
+	@./scripts/validate-openapi-local.sh
+	@echo "✓ OpenAPI validation completed"
+
+validate-openapi-quick: ## Quick OpenAPI validation (minimal rules)
+	@echo "Running quick OpenAPI validation..."
+	@if command -v redocly >/dev/null 2>&1; then \
+		echo "Using existing Redocly CLI..."; \
+	else \
+		echo "Installing Redocly CLI..."; \
+		npm install -g @redocly/cli; \
+	fi
+	@if [ -f "./go-op-cli" ]; then \
+		echo "Using existing CLI tool..."; \
+	else \
+		echo "Building CLI tool..."; \
+		go build -o go-op-cli ./cmd/goop; \
+	fi
+	@mkdir -p generated-specs
+	@./go-op-cli generate -i ./examples/user-service -o ./generated-specs/user-service.yaml -t "User Service API" -V "1.0.0"
+	@redocly lint ./generated-specs/user-service.yaml --config redocly.yaml
+	@echo "✓ Quick OpenAPI validation completed"
+
 # Maintenance and cleanup
 clean: ## Clean build artifacts and temporary files
 	@echo "Cleaning up..."
@@ -157,6 +184,9 @@ clean: ## Clean build artifacts and temporary files
 	@rm -f coverage.out coverage.html
 	@rm -f cpu.prof mem.prof
 	@rm -f benchmark_results.txt
+	@rm -f go-op-cli
+	@rm -rf generated-specs
+	@rm -rf docs/api-docs.html
 	@echo "✓ Cleanup completed"
 
 tidy: ## Tidy up go.mod and format code
@@ -166,7 +196,7 @@ tidy: ## Tidy up go.mod and format code
 	@echo "✓ Tidying completed"
 
 # Release preparation
-pre-commit: quality-check test-all ## Run all checks before committing
+pre-commit: quality-check test-all validate-openapi-quick ## Run all checks before committing
 	@echo "✓ Pre-commit checks passed"
 
 release-check: ## Verify project is ready for release
@@ -175,6 +205,7 @@ release-check: ## Verify project is ready for release
 	@$(MAKE) test-all
 	@$(MAKE) benchmark
 	@$(MAKE) examples-test
+	@$(MAKE) validate-openapi
 	@echo "✓ Project is ready for release"
 
 # Git hooks
@@ -209,6 +240,7 @@ ci-test: ## Simulate CI environment testing
 	@$(MAKE) quality-check
 	@$(MAKE) test-all
 	@$(MAKE) benchmark
+	@$(MAKE) validate-openapi
 	@echo "✓ CI simulation completed successfully"
 
 # Multi-platform build verification
@@ -254,6 +286,10 @@ help-detailed: ## Show detailed help with examples
 	@echo '  make lint          - Run linter'
 	@echo '  make security      - Run security checks'
 	@echo '  make quality-check - Run all quality checks'
+	@echo ''
+	@echo 'OpenAPI Validation:'
+	@echo '  make validate-openapi       - Full OpenAPI validation'
+	@echo '  make validate-openapi-quick - Quick OpenAPI validation'
 	@echo ''
 	@echo 'Maintenance:'
 	@echo '  make clean         - Clean up build artifacts'

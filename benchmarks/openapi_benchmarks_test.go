@@ -3,7 +3,7 @@ package benchmarks
 import (
 	"testing"
 
-	"github.com/picogrid/go-op"
+	goop "github.com/picogrid/go-op"
 	"github.com/picogrid/go-op/operations"
 	"github.com/picogrid/go-op/validators"
 )

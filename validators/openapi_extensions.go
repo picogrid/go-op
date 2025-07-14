@@ -1,7 +1,7 @@
 package validators
 
 import (
-	"github.com/picogrid/go-op"
+	goop "github.com/picogrid/go-op"
 )
 
 // OpenAPI generation methods for stringSchema

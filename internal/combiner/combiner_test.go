@@ -2,14 +2,14 @@ package combiner
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/picogrid/go-op/operations"
 	"gopkg.in/yaml.v3"
+
+	"github.com/picogrid/go-op/operations"
 )
 
 func TestNew(t *testing.T) {
@@ -208,7 +208,7 @@ paths:
         '200':
           description: Success
 `
-	if err := ioutil.WriteFile(yamlFile, []byte(yamlContent), 0644); err != nil {
+	if err := os.WriteFile(yamlFile, []byte(yamlContent), 0644); err != nil {
 		t.Fatalf("Failed to create test YAML file: %v", err)
 	}
 
@@ -233,7 +233,7 @@ paths:
     }
   }
 }`
-	if err := ioutil.WriteFile(jsonFile, []byte(jsonContent), 0644); err != nil {
+	if err := os.WriteFile(jsonFile, []byte(jsonContent), 0644); err != nil {
 		t.Fatalf("Failed to create test JSON file: %v", err)
 	}
 
@@ -507,7 +507,7 @@ func TestWriteOutput(t *testing.T) {
 	}
 
 	// Verify YAML file exists and can be parsed
-	yamlData, err := ioutil.ReadFile(yamlFile)
+	yamlData, err := os.ReadFile(yamlFile)
 	if err != nil {
 		t.Errorf("Failed to read YAML output: %v", err)
 	}
@@ -528,7 +528,7 @@ func TestWriteOutput(t *testing.T) {
 	}
 
 	// Verify JSON file exists and can be parsed
-	jsonData, err := ioutil.ReadFile(jsonFile)
+	jsonData, err := os.ReadFile(jsonFile)
 	if err != nil {
 		t.Errorf("Failed to read JSON output: %v", err)
 	}
@@ -561,7 +561,7 @@ paths:
     get:
       summary: Get users
 `
-	if err := ioutil.WriteFile(spec1File, []byte(spec1Content), 0644); err != nil {
+	if err := os.WriteFile(spec1File, []byte(spec1Content), 0644); err != nil {
 		t.Fatalf("Failed to create spec file: %v", err)
 	}
 
@@ -576,7 +576,7 @@ paths:
     get:
       summary: Get orders
 `
-	if err := ioutil.WriteFile(spec2File, []byte(spec2Content), 0644); err != nil {
+	if err := os.WriteFile(spec2File, []byte(spec2Content), 0644); err != nil {
 		t.Fatalf("Failed to create spec file: %v", err)
 	}
 
@@ -599,7 +599,7 @@ settings:
   merge_schemas: true
   validate_output: true
 `
-	if err := ioutil.WriteFile(configFile, []byte(configContent), 0644); err != nil {
+	if err := os.WriteFile(configFile, []byte(configContent), 0644); err != nil {
 		t.Fatalf("Failed to create config file: %v", err)
 	}
 

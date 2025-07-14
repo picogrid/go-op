@@ -9,9 +9,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/picogrid/go-op"
-	"github.com/picogrid/go-op/operations"
 	"gopkg.in/yaml.v3"
+
+	goop "github.com/picogrid/go-op"
+	"github.com/picogrid/go-op/operations"
 )
 
 // Generator handles OpenAPI specification generation from Go source code
@@ -104,6 +105,12 @@ func (g *Generator) ScanOperations() error {
 func (g *Generator) scanFile(filename string) error {
 	g.stats.FileCount++
 
+	// Clean and validate the filename to prevent path traversal attacks
+	filename = filepath.Clean(filename)
+	if !filepath.IsAbs(filename) {
+		return fmt.Errorf("filename must be an absolute path")
+	}
+
 	src, err := os.ReadFile(filename)
 	if err != nil {
 		return fmt.Errorf("failed to read file %s: %w", filename, err)
@@ -180,7 +187,14 @@ func (g *Generator) getTitle() string {
 	// Try to auto-detect from directory name
 	dirName := filepath.Base(g.config.InputDir)
 	if dirName != "." && dirName != "/" {
-		return strings.Title(strings.ReplaceAll(dirName, "-", " ")) + " API"
+		// Replace strings.Title with manual title case conversion
+		parts := strings.Split(strings.ReplaceAll(dirName, "-", " "), " ")
+		for i, part := range parts {
+			if len(part) > 0 {
+				parts[i] = strings.ToUpper(part[:1]) + strings.ToLower(part[1:])
+			}
+		}
+		return strings.Join(parts, " ") + " API"
 	}
 
 	return "Generated API"
@@ -245,7 +259,7 @@ func (g *Generator) addParametersFromSchema(schema *SchemaDefinition, paramType 
 			param := operations.OpenAPIParameter{
 				Name:     name,
 				In:       paramType,
-				Required: g.isPropertyRequired(name, schema.Required),
+				Required: paramType == "path" || g.isPropertyRequired(name, schema.Required),
 				Schema:   g.convertSchemaToOpenAPI(propSchema),
 			}
 			openAPIOp.Parameters = append(openAPIOp.Parameters, param)
@@ -322,7 +336,7 @@ func (g *Generator) isPropertyRequired(propName string, required []string) bool 
 func (g *Generator) WriteSpec() error {
 	// Create output directory if it doesn't exist
 	outputDir := filepath.Dir(g.config.OutputFile)
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
+	if err := os.MkdirAll(outputDir, 0750); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 

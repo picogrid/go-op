@@ -9,7 +9,8 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/picogrid/go-op"
+
+	goop "github.com/picogrid/go-op"
 	"github.com/picogrid/go-op/validators"
 )
 

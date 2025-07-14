@@ -3,7 +3,7 @@ package validators
 import (
 	"testing"
 
-	"github.com/picogrid/go-op"
+	goop "github.com/picogrid/go-op"
 )
 
 // TestObjectValidation tests object schema validation
@@ -336,10 +336,8 @@ func TestBoolValidation(t *testing.T) {
 		// Invalid case - false
 		if err := schema.Validate(false); err == nil {
 			t.Error("Expected false to fail custom validation")
-		} else {
-			if !contains(err.Error(), "Must agree to terms") {
-				t.Errorf("Expected custom error message, got: %v", err)
-			}
+		} else if !contains(err.Error(), "Must agree to terms") {
+			t.Errorf("Expected custom error message, got: %v", err)
 		}
 	})
 }

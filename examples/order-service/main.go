@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/picogrid/go-op/operations"
 	"github.com/picogrid/go-op/validators"
 )
@@ -202,7 +203,7 @@ func getOrderHandler(ctx context.Context, params GetOrderParams, query struct{},
 
 func updateOrderStatusHandler(ctx context.Context, params UpdateOrderParams, query struct{}, body UpdateOrderStatusRequest) (Order, error) {
 	// Simulate order status update
-	order, _ := getOrderHandler(ctx, GetOrderParams{ID: params.ID}, struct{}{}, struct{}{})
+	order, _ := getOrderHandler(ctx, GetOrderParams(params), struct{}{}, struct{}{})
 	order.Status = body.Status
 	order.UpdatedAt = time.Now()
 	return order, nil
@@ -386,7 +387,7 @@ func main() {
 	updateOrderStatusOp := operations.NewSimple().
 		PATCH("/orders/{id}/status").
 		Summary("Update order status").
-		Description("Updates the status of an existing order (pending, confirmed, shipped, delivered, cancelled)").
+		Description("Updates the status of an existing order (pending, confirmed, shipped, delivered, canceled)").
 		Tags("orders", "status").
 		WithParams(orderParamsSchema).
 		WithBody(updateOrderStatusBodySchema).

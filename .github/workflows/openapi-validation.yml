@@ -70,15 +70,15 @@ jobs:
 
       - name: Install OpenAPI validator
         run: |
-          npm install -g @apidevtools/swagger-cli
-          echo "✓ OpenAPI validator installed"
+          npm install -g @redocly/cli
+          echo "✓ Redocly CLI installed"
 
       - name: Validate generated specs
         run: |
           echo "Validating individual service specs..."
           for spec in ./generated-specs/*.yaml; do
             echo "Validating $spec"
-            swagger-cli validate "$spec" || exit 1
+            redocly lint "$spec" --extends=recommended --format=codeframe || exit 1
           done
           echo "✓ All OpenAPI specs are valid"
 
@@ -86,9 +86,6 @@ jobs:
         if: github.event_name == 'pull_request'
         continue-on-error: true
         run: |
-          # Install oasdiff for API diff checking
-          go install github.com/tufin/oasdiff/cmd/oasdiff@latest
-          
           # Check out base branch specs
           git fetch origin ${{ github.base_ref }}:${{ github.base_ref }}
           git checkout ${{ github.base_ref }}
@@ -101,20 +98,21 @@ jobs:
           # Switch back to PR branch
           git checkout -
           
-          # Compare specs
+          # Compare specs using Redocly diff
           if [ -f ./base-specs/user-service.yaml ]; then
             echo "## API Changes Report" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             
-            oasdiff breaking ./base-specs/user-service.yaml ./generated-specs/user-service.yaml >> api-changes.txt 2>&1 || true
+            # Use Redocly diff for change detection
+            redocly diff ./base-specs/user-service.yaml ./generated-specs/user-service.yaml --format=markdown >> api-changes.txt 2>&1 || true
             
             if [ -s api-changes.txt ]; then
-              echo "### Breaking Changes Detected" >> $GITHUB_STEP_SUMMARY
+              echo "### API Changes Detected" >> $GITHUB_STEP_SUMMARY
               echo '```' >> $GITHUB_STEP_SUMMARY
               cat api-changes.txt >> $GITHUB_STEP_SUMMARY
               echo '```' >> $GITHUB_STEP_SUMMARY
             else
-              echo "✅ No breaking changes detected" >> $GITHUB_STEP_SUMMARY
+              echo "✅ No API changes detected" >> $GITHUB_STEP_SUMMARY
             fi
           fi
 
@@ -176,35 +174,7 @@ jobs:
           name: openapi-specifications
           path: ./specs
 
-      - name: Install spectral linter
-        run: |
-          npm install -g @stoplight/spectral-cli
-          echo "✓ Spectral linter installed"
-
-      - name: Create spectral config
-        run: |
-          cat > .spectral.yml << 'EOF'
-          extends: ["spectral:oas"]
-          
-          rules:
-            # Enforce operation IDs
-            operation-operationId: error
-            
-            # Require descriptions
-            operation-description: warn
-            info-description: warn
-            
-            # Require examples
-            oas3-examples-value-or-externalValue: warn
-            
-            # Security
-            oas3-operation-security-defined: error
-            
-            # API versioning
-            oas3-server-trailing-slash: error
-          EOF
-
-      - name: Lint specifications
+      - name: Advanced linting with Redocly
         run: |
           echo "## OpenAPI Linting Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -213,7 +183,7 @@ jobs:
             basename=$(basename "$spec")
             echo "### $basename" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
-            spectral lint "$spec" --format text >> $GITHUB_STEP_SUMMARY 2>&1 || true
+            redocly lint "$spec" --extends=recommended --format=codeframe >> $GITHUB_STEP_SUMMARY 2>&1 || true
             echo '```' >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
           done

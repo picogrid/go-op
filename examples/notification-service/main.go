@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/picogrid/go-op/operations"
 	"github.com/picogrid/go-op/validators"
 )
@@ -260,7 +261,7 @@ func getNotificationHandler(ctx context.Context, params GetNotificationParams, q
 }
 
 func markNotificationReadHandler(ctx context.Context, params MarkReadParams, query struct{}, body struct{}) (Notification, error) {
-	notification, _ := getNotificationHandler(ctx, GetNotificationParams{ID: params.ID}, struct{}{}, struct{}{})
+	notification, _ := getNotificationHandler(ctx, GetNotificationParams(params), struct{}{}, struct{}{})
 	now := time.Now()
 	notification.Status = "read"
 	notification.ReadAt = &now
@@ -350,7 +351,7 @@ func getTemplateHandler(ctx context.Context, params GetTemplateParams, query str
 }
 
 func updateTemplateHandler(ctx context.Context, params UpdateTemplateParams, query struct{}, body UpdateTemplateRequest) (Template, error) {
-	template, _ := getTemplateHandler(ctx, GetTemplateParams{ID: params.ID}, struct{}{}, struct{}{})
+	template, _ := getTemplateHandler(ctx, GetTemplateParams(params), struct{}{}, struct{}{})
 
 	if body.Name != nil {
 		template.Name = *body.Name

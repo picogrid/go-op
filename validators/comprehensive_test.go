@@ -110,10 +110,8 @@ func TestEdgeCases(t *testing.T) {
 				err := schema.Validate(testCase)
 				if math.IsNaN(testCase) || math.IsInf(testCase, 0) {
 					t.Logf("Extreme value %v result: %v", testCase, err)
-				} else {
-					if err != nil {
-						t.Errorf("Expected extreme number %v to be valid, got: %v", testCase, err)
-					}
+				} else if err != nil {
+					t.Errorf("Expected extreme number %v to be valid, got: %v", testCase, err)
 				}
 			})
 		}
@@ -771,8 +769,7 @@ func TestCompatibility(t *testing.T) {
 	t.Run("Interface Compatibility", func(t *testing.T) {
 		stringSchema := String().Required()
 
-		var validator interface{ Validate(interface{}) error }
-		validator = stringSchema
+		var validator interface{ Validate(interface{}) error } = stringSchema
 
 		if err := validator.Validate("test"); err != nil {
 			t.Errorf("Interface validation failed: %v", err)

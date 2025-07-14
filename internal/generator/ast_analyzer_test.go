@@ -517,11 +517,9 @@ var userResponseSchema = validators.Object(map[string]interface{}{
 	// Check that response schema reference was preserved (forward reference)
 	if op.Response == nil {
 		t.Errorf("Expected response schema to be set")
-	} else {
+	} else if op.Response.Description == "" && op.Response.Type == "object" && len(op.Response.Properties) == 0 {
 		// Since userResponseSchema is defined after its use, it might just have a description
-		if op.Response.Description == "" && op.Response.Type == "object" && len(op.Response.Properties) == 0 {
-			t.Errorf("Expected response schema to have some indication it's a reference")
-		}
+		t.Errorf("Expected response schema to have some indication it's a reference")
 	}
 }
 

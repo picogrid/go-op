@@ -147,11 +147,12 @@ func BenchmarkRouterDispatch(b *testing.B) {
 
 		// Try parameterized matches
 		if method == "GET" && len(path) > 7 {
-			if path[:7] == "/users/" {
+			switch path[:7] {
+			case "/users/":
 				if handler, ok := routes["GET /users/{id}"]; ok {
 					return handler, map[string]string{"id": path[7:]}, true
 				}
-			} else if path[:7] == "/posts/" {
+			case "/posts/":
 				parts := strings.Split(path[7:], "/")
 				if len(parts) == 1 {
 					if handler, ok := routes["GET /posts/{id}"]; ok {

@@ -21,7 +21,7 @@ type ArrayBuilder interface {
 	WithContainsMessage(message string) ArrayBuilder
 
 	// Validation method - final step in the builder chain
-	//Validate(data interface{}) error
+	// Validate(data interface{}) error
 }
 
 // RequiredArrayBuilder represents an array builder in the required state.

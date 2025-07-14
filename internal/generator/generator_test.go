@@ -2,14 +2,14 @@ package generator
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/picogrid/go-op/operations"
 	"gopkg.in/yaml.v3"
+
+	"github.com/picogrid/go-op/operations"
 )
 
 func TestNew(t *testing.T) {
@@ -399,9 +399,10 @@ func TestAddOperationToSpec(t *testing.T) {
 	pathParams := 0
 	queryParams := 0
 	for _, param := range operation.Parameters {
-		if param.In == "path" {
+		switch param.In {
+		case "path":
 			pathParams++
-		} else if param.In == "query" {
+		case "query":
 			queryParams++
 		}
 	}
@@ -417,10 +418,8 @@ func TestAddOperationToSpec(t *testing.T) {
 	// Check request body
 	if operation.RequestBody == nil {
 		t.Errorf("Expected request body to be set")
-	} else {
-		if !operation.RequestBody.Required {
-			t.Errorf("Expected request body to be required")
-		}
+	} else if !operation.RequestBody.Required {
+		t.Errorf("Expected request body to be required")
 	}
 
 	// Check response
@@ -574,7 +573,7 @@ func TestWriteSpec(t *testing.T) {
 	}
 
 	// Verify YAML file exists and can be parsed
-	yamlData, err := ioutil.ReadFile(yamlFile)
+	yamlData, err := os.ReadFile(yamlFile)
 	if err != nil {
 		t.Errorf("Failed to read YAML output: %v", err)
 	}
@@ -599,7 +598,7 @@ func TestWriteSpec(t *testing.T) {
 	}
 
 	// Verify JSON file exists and can be parsed
-	jsonData, err := ioutil.ReadFile(jsonFile)
+	jsonData, err := os.ReadFile(jsonFile)
 	if err != nil {
 		t.Errorf("Failed to read JSON output: %v", err)
 	}
@@ -657,7 +656,7 @@ var getUserOperation = operations.NewSimple().
 		"name": validators.String(),
 	}))
 `
-	if err := ioutil.WriteFile(goFile, []byte(goContent), 0644); err != nil {
+	if err := os.WriteFile(goFile, []byte(goContent), 0644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -685,7 +684,7 @@ package main
 
 var op1 = operations.NewSimple().GET("/test")
 `
-	if err := ioutil.WriteFile(mainFile, []byte(mainContent), 0644); err != nil {
+	if err := os.WriteFile(mainFile, []byte(mainContent), 0644); err != nil {
 		t.Fatalf("Failed to create main.go: %v", err)
 	}
 
@@ -696,7 +695,7 @@ package main
 
 var testOp = operations.NewSimple().GET("/test-endpoint")
 `
-	if err := ioutil.WriteFile(testFile, []byte(testContent), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte(testContent), 0644); err != nil {
 		t.Fatalf("Failed to create main_test.go: %v", err)
 	}
 
@@ -709,13 +708,13 @@ package test
 
 var vendorOp = operations.NewSimple().GET("/vendor")
 `
-	if err := ioutil.WriteFile(vendorFile, []byte(vendorContent), 0644); err != nil {
+	if err := os.WriteFile(vendorFile, []byte(vendorContent), 0644); err != nil {
 		t.Fatalf("Failed to create vendor file: %v", err)
 	}
 
 	// Create non-Go file (should be skipped)
 	txtFile := filepath.Join(tempDir, "readme.txt")
-	if err := ioutil.WriteFile(txtFile, []byte("readme"), 0644); err != nil {
+	if err := os.WriteFile(txtFile, []byte("readme"), 0644); err != nil {
 		t.Fatalf("Failed to create txt file: %v", err)
 	}
 

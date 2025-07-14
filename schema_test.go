@@ -502,11 +502,12 @@ func TestSchemaIntegration(t *testing.T) {
 		// Generate large dataset
 		dataList := make([]interface{}, 1000)
 		for i := range dataList {
-			if i%10 == 0 {
+			switch {
+			case i%10 == 0:
 				dataList[i] = nil // 10% invalid data (every 10th: 0, 10, 20, 30, ...)
-			} else if i%25 == 1 {
+			case i%25 == 1:
 				dataList[i] = "" // 4% empty strings (1, 26, 51, 76, ...)
-			} else {
+			default:
 				dataList[i] = "valid data"
 			}
 		}

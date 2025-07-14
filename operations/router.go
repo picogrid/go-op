@@ -5,7 +5,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/picogrid/go-op"
+
+	goop "github.com/picogrid/go-op"
 )
 
 // Router provides zero-reflection operation registration and handler creation
@@ -109,14 +110,14 @@ func CreateValidatedHandler[P, Q, B, R any](
 		if paramsSchema != nil {
 			if err := c.ShouldBindUri(&params); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
-					"error": "Invalid path parameters",
+					"error":   "Invalid path parameters",
 					"details": err.Error(),
 				})
 				return
 			}
 			if err := paramsSchema.Validate(params); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
-					"error": "Path parameter validation failed",
+					"error":   "Path parameter validation failed",
 					"details": err.Error(),
 				})
 				return
@@ -127,14 +128,14 @@ func CreateValidatedHandler[P, Q, B, R any](
 		if querySchema != nil {
 			if err := c.ShouldBindQuery(&query); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
-					"error": "Invalid query parameters",
+					"error":   "Invalid query parameters",
 					"details": err.Error(),
 				})
 				return
 			}
 			if err := querySchema.Validate(query); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
-					"error": "Query parameter validation failed",
+					"error":   "Query parameter validation failed",
 					"details": err.Error(),
 				})
 				return
@@ -145,14 +146,14 @@ func CreateValidatedHandler[P, Q, B, R any](
 		if bodySchema != nil {
 			if err := c.ShouldBindJSON(&body); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
-					"error": "Invalid request body",
+					"error":   "Invalid request body",
 					"details": err.Error(),
 				})
 				return
 			}
 			if err := bodySchema.Validate(body); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
-					"error": "Request body validation failed",
+					"error":   "Request body validation failed",
 					"details": err.Error(),
 				})
 				return
@@ -164,7 +165,7 @@ func CreateValidatedHandler[P, Q, B, R any](
 		if err != nil {
 			// Handle business logic errors
 			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Internal server error",
+				"error":   "Internal server error",
 				"details": err.Error(),
 			})
 			return
@@ -174,7 +175,7 @@ func CreateValidatedHandler[P, Q, B, R any](
 		if responseSchema != nil {
 			if err := responseSchema.Validate(result); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "Response validation failed",
+					"error":   "Response validation failed",
 					"details": err.Error(),
 				})
 				return
@@ -199,7 +200,7 @@ func ValidationMiddleware(
 			var params interface{}
 			if err := c.ShouldBindUri(&params); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
-					"error": "Invalid path parameters",
+					"error":   "Invalid path parameters",
 					"details": err.Error(),
 				})
 				c.Abort()
@@ -207,7 +208,7 @@ func ValidationMiddleware(
 			}
 			if err := paramsSchema.Validate(params); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
-					"error": "Path parameter validation failed",
+					"error":   "Path parameter validation failed",
 					"details": err.Error(),
 				})
 				c.Abort()
@@ -221,7 +222,7 @@ func ValidationMiddleware(
 			var query interface{}
 			if err := c.ShouldBindQuery(&query); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
-					"error": "Invalid query parameters",
+					"error":   "Invalid query parameters",
 					"details": err.Error(),
 				})
 				c.Abort()
@@ -229,7 +230,7 @@ func ValidationMiddleware(
 			}
 			if err := querySchema.Validate(query); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
-					"error": "Query parameter validation failed",
+					"error":   "Query parameter validation failed",
 					"details": err.Error(),
 				})
 				c.Abort()
@@ -243,7 +244,7 @@ func ValidationMiddleware(
 			var body interface{}
 			if err := c.ShouldBindJSON(&body); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
-					"error": "Invalid request body",
+					"error":   "Invalid request body",
 					"details": err.Error(),
 				})
 				c.Abort()
@@ -251,7 +252,7 @@ func ValidationMiddleware(
 			}
 			if err := bodySchema.Validate(body); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
-					"error": "Request body validation failed",
+					"error":   "Request body validation failed",
 					"details": err.Error(),
 				})
 				c.Abort()
@@ -307,7 +308,7 @@ func (r *Router) ServeSpec(generator Generator) gin.HandlerFunc {
 					fmt.Sprintf("%d", op.SuccessCode): op.ResponseSpec,
 				}
 			}
-			if op.Security != nil && len(op.Security) > 0 {
+			if len(op.Security) > 0 {
 				spec["security"] = op.Security
 			}
 			if op.HeaderSpec != nil {

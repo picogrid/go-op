@@ -3,8 +3,9 @@ package operations
 import (
 	"context"
 
-	"github.com/picogrid/go-op"
 	"github.com/gin-gonic/gin"
+
+	goop "github.com/picogrid/go-op"
 )
 
 // Handler represents a type-safe operation handler function

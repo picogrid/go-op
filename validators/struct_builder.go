@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/picogrid/go-op"
+	goop "github.com/picogrid/go-op"
 )
 
 // StructValidator creates a type-safe validator for struct type T.
@@ -44,7 +44,18 @@ func ValidateStruct[T any](schema goop.Schema, data interface{}) (*T, error) {
 	case map[string]interface{}:
 		// Already a map, use as-is
 		validateData = v
-	case T, *T:
+	case *T:
+		// Convert struct pointer to map via JSON (zero reflection approach)
+		jsonData, err := json.Marshal(data)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal struct: %w", err)
+		}
+		var m map[string]interface{}
+		if err := json.Unmarshal(jsonData, &m); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal struct: %w", err)
+		}
+		validateData = m
+	case T:
 		// Convert struct to map via JSON (zero reflection approach)
 		jsonData, err := json.Marshal(data)
 		if err != nil {

@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/picogrid/go-op/internal/generator"
 	"github.com/spf13/cobra"
+
+	"github.com/picogrid/go-op/internal/generator"
 )
 
 var generateCmd = &cobra.Command{

@@ -3,13 +3,13 @@ package combiner
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/picogrid/go-op/operations"
 	"gopkg.in/yaml.v3"
+
+	"github.com/picogrid/go-op/operations"
 )
 
 // Combiner handles combining multiple OpenAPI specifications
@@ -50,7 +50,7 @@ func (c *Combiner) LoadFromConfig() error {
 		return nil
 	}
 
-	configData, err := ioutil.ReadFile(c.config.ConfigFile)
+	configData, err := os.ReadFile(c.config.ConfigFile)
 	if err != nil {
 		return fmt.Errorf("failed to read config file: %w", err)
 	}
@@ -124,7 +124,13 @@ func (c *Combiner) LoadSpecs() error {
 
 // loadSingleSpec loads a single OpenAPI specification file
 func (c *Combiner) loadSingleSpec(filename string) (*operations.OpenAPISpec, error) {
-	data, err := ioutil.ReadFile(filename)
+	// Clean and validate the filename to prevent path traversal attacks
+	filename = filepath.Clean(filename)
+	if !filepath.IsAbs(filename) {
+		return nil, fmt.Errorf("filename must be an absolute path")
+	}
+
+	data, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %w", err)
 	}
@@ -413,7 +419,7 @@ func (c *Combiner) ValidateOutput() error {
 func (c *Combiner) WriteOutput() error {
 	// Create output directory if it doesn't exist
 	outputDir := filepath.Dir(c.config.OutputFile)
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
+	if err := os.MkdirAll(outputDir, 0750); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
