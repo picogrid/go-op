@@ -1,0 +1,219 @@
+name: OpenAPI Validation
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "validators/**"
+      - "operations/**"
+      - "internal/**"
+      - "cmd/goop/**"
+      - "examples/**"
+  pull_request:
+    branches: [main, master]
+    paths:
+      - "validators/**"
+      - "operations/**"
+      - "internal/**"
+      - "cmd/goop/**"
+      - "examples/**"
+
+env:
+  GO_VERSION: "1.22"
+
+jobs:
+  generate-and-validate:
+    name: Generate and Validate OpenAPI Specs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Cache Go modules
+        uses: actions/cache@v3
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ env.GO_VERSION }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-${{ env.GO_VERSION }}-
+
+      - name: Build CLI tool
+        run: |
+          go build -o go-op-cli ./cmd/goop
+          echo "✓ CLI tool built successfully"
+
+      - name: Generate OpenAPI specs for all examples
+        run: |
+          mkdir -p generated-specs
+          
+          # Generate specs for each service
+          ./go-op-cli generate -i ./examples/user-service -o ./generated-specs/user-service.yaml -t "User Service API" -V "1.0.0" -v
+          ./go-op-cli generate -i ./examples/order-service -o ./generated-specs/order-service.yaml -t "Order Service API" -V "1.0.0" -v
+          ./go-op-cli generate -i ./examples/notification-service -o ./generated-specs/notification-service.yaml -t "Notification Service API" -V "1.0.0" -v
+          
+          echo "✓ Generated OpenAPI specs for all services"
+
+      - name: Combine service specs
+        run: |
+          ./go-op-cli combine -o ./generated-specs/combined-platform.yaml -t "Platform API" -V "3.0.0" -b "/api/v1" \
+            ./generated-specs/user-service.yaml \
+            ./generated-specs/order-service.yaml \
+            ./generated-specs/notification-service.yaml -v
+          
+          echo "✓ Combined service specs successfully"
+
+      - name: Install OpenAPI validator
+        run: |
+          npm install -g @apidevtools/swagger-cli
+          echo "✓ OpenAPI validator installed"
+
+      - name: Validate generated specs
+        run: |
+          echo "Validating individual service specs..."
+          for spec in ./generated-specs/*.yaml; do
+            echo "Validating $spec"
+            swagger-cli validate "$spec" || exit 1
+          done
+          echo "✓ All OpenAPI specs are valid"
+
+      - name: Check for API breaking changes
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        run: |
+          # Install oasdiff for API diff checking
+          go install github.com/tufin/oasdiff/cmd/oasdiff@latest
+          
+          # Check out base branch specs
+          git fetch origin ${{ github.base_ref }}:${{ github.base_ref }}
+          git checkout ${{ github.base_ref }}
+          
+          # Generate base specs
+          mkdir -p base-specs
+          go build -o go-op-cli-base ./cmd/goop
+          ./go-op-cli-base generate -i ./examples/user-service -o ./base-specs/user-service.yaml -t "User Service API" -V "1.0.0" || true
+          
+          # Switch back to PR branch
+          git checkout -
+          
+          # Compare specs
+          if [ -f ./base-specs/user-service.yaml ]; then
+            echo "## API Changes Report" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            oasdiff breaking ./base-specs/user-service.yaml ./generated-specs/user-service.yaml >> api-changes.txt 2>&1 || true
+            
+            if [ -s api-changes.txt ]; then
+              echo "### Breaking Changes Detected" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              cat api-changes.txt >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+            else
+              echo "✅ No breaking changes detected" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+
+      - name: Generate spec statistics
+        run: |
+          echo "## OpenAPI Specification Statistics" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          for spec in ./generated-specs/*.yaml; do
+            basename=$(basename "$spec")
+            echo "### $basename" >> $GITHUB_STEP_SUMMARY
+            
+            # Count paths and operations
+            paths=$(grep -c "^  /" "$spec" || echo "0")
+            operations=$(grep -E "^ +(get|post|put|patch|delete|head|options):" "$spec" | wc -l)
+            
+            echo "- Paths: $paths" >> $GITHUB_STEP_SUMMARY
+            echo "- Operations: $operations" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          done
+
+      - name: Upload generated specs
+        uses: actions/upload-artifact@v3
+        with:
+          name: openapi-specifications
+          path: ./generated-specs/*.yaml
+          retention-days: 30
+
+      - name: Check spec size and complexity
+        run: |
+          echo "## Specification Size Analysis" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          for spec in ./generated-specs/*.yaml; do
+            basename=$(basename "$spec")
+            size=$(du -h "$spec" | cut -f1)
+            lines=$(wc -l < "$spec")
+            
+            echo "- **$basename**: $size ($lines lines)" >> $GITHUB_STEP_SUMMARY
+            
+            # Warn if spec is too large
+            if [ "$lines" -gt 5000 ]; then
+              echo "  ⚠️ Large specification detected - consider splitting" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+
+  lint-openapi:
+    name: Lint OpenAPI Specifications
+    runs-on: ubuntu-latest
+    needs: generate-and-validate
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download generated specs
+        uses: actions/download-artifact@v3
+        with:
+          name: openapi-specifications
+          path: ./specs
+
+      - name: Install spectral linter
+        run: |
+          npm install -g @stoplight/spectral-cli
+          echo "✓ Spectral linter installed"
+
+      - name: Create spectral config
+        run: |
+          cat > .spectral.yml << 'EOF'
+          extends: ["spectral:oas"]
+          
+          rules:
+            # Enforce operation IDs
+            operation-operationId: error
+            
+            # Require descriptions
+            operation-description: warn
+            info-description: warn
+            
+            # Require examples
+            oas3-examples-value-or-externalValue: warn
+            
+            # Security
+            oas3-operation-security-defined: error
+            
+            # API versioning
+            oas3-server-trailing-slash: error
+          EOF
+
+      - name: Lint specifications
+        run: |
+          echo "## OpenAPI Linting Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          for spec in ./specs/*.yaml; do
+            basename=$(basename "$spec")
+            echo "### $basename" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            spectral lint "$spec" --format text >> $GITHUB_STEP_SUMMARY 2>&1 || true
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          done

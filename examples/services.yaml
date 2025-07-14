@@ -1,0 +1,46 @@
+# services.yaml - Configuration for combining multiple microservice OpenAPI specs
+
+# Global API metadata for the combined specification
+title: "E-commerce Platform API"
+version: "3.0.0"
+description: "Comprehensive API documentation for the e-commerce platform microservices"
+base_url: "/api/v1"
+
+# List of microservices to combine
+services:
+  - name: "user-service"
+    spec_file: "./user-service.yaml"
+    path_prefix: "/users"
+    description: "User management and authentication service"
+    version: "1.0.0"
+    health_check: "/health"
+    tags: ["users", "authentication"]
+    enabled: true
+
+  - name: "order-service"
+    spec_file: "./order-service.yaml"
+    path_prefix: "/orders"
+    description: "Order processing and management service"
+    version: "1.2.0"
+    health_check: "/health"
+    tags: ["orders", "e-commerce", "payments"]
+    enabled: true
+
+  - name: "notification-service"
+    spec_file: "./notification-service.yaml"
+    path_prefix: "/notifications"
+    description: "Notification and messaging service"
+    version: "2.1.0"
+    health_check: "/health"
+    tags: ["notifications", "messaging", "templates"]
+    enabled: true
+
+# Global combination settings
+settings:
+  merge_schemas: true
+  validate_output: true
+  conflict_strategy: "override"  # How to handle path conflicts: "override", "merge", "error"
+  
+  # Tag filtering (optional)
+  # include_tags: ["public"]      # Only include operations with these tags
+  # exclude_tags: ["internal"]    # Exclude operations with these tags
