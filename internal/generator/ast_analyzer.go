@@ -457,6 +457,84 @@ func (a *ASTAnalyzer) processValidatorMethod(methodName string, args []ast.Expr,
 		if a.verbose {
 			fmt.Printf("[VERBOSE] Schema is optional\n")
 		}
+	case "Example":
+		// Extract simple example value
+		if len(args) > 0 {
+			if val := a.extractLiteralValue(args[0]); val != nil {
+				schema.Example = val
+				if a.verbose {
+					fmt.Printf("[VERBOSE] Extracted example: %v\n", val)
+				}
+			}
+		}
+	case "Examples":
+		// Extract multiple examples map
+		if len(args) > 0 {
+			if examples := a.extractExamplesMap(args[0]); examples != nil {
+				schema.Examples = examples
+				if a.verbose {
+					fmt.Printf("[VERBOSE] Extracted %d examples\n", len(examples))
+				}
+			}
+		}
+	case "ExampleFromFile":
+		// Extract external file reference
+		if len(args) > 0 {
+			if val := a.extractStringLiteral(args[0]); val != "" {
+				schema.ExternalValue = val
+				if a.verbose {
+					fmt.Printf("[VERBOSE] Extracted external example: %s\n", val)
+				}
+			}
+		}
+	case "OneOf":
+		// Extract OneOf composition schemas
+		schema.Type = "" // Clear type for composition schemas
+		if a.verbose {
+			fmt.Printf("[VERBOSE] Processing OneOf with %d schemas\n", len(args))
+		}
+		for _, arg := range args {
+			childSchema := a.extractSchemaDefinition(arg)
+			if childSchema != nil {
+				schema.OneOf = append(schema.OneOf, childSchema)
+			}
+		}
+	case "AllOf":
+		// Extract AllOf composition schemas
+		schema.Type = "" // Clear type for composition schemas
+		if a.verbose {
+			fmt.Printf("[VERBOSE] Processing AllOf with %d schemas\n", len(args))
+		}
+		for _, arg := range args {
+			childSchema := a.extractSchemaDefinition(arg)
+			if childSchema != nil {
+				schema.AllOf = append(schema.AllOf, childSchema)
+			}
+		}
+	case "AnyOf":
+		// Extract AnyOf composition schemas
+		schema.Type = "" // Clear type for composition schemas
+		if a.verbose {
+			fmt.Printf("[VERBOSE] Processing AnyOf with %d schemas\n", len(args))
+		}
+		for _, arg := range args {
+			childSchema := a.extractSchemaDefinition(arg)
+			if childSchema != nil {
+				schema.AnyOf = append(schema.AnyOf, childSchema)
+			}
+		}
+	case "Not":
+		// Extract Not composition schema
+		schema.Type = "" // Clear type for composition schemas
+		if len(args) > 0 {
+			if a.verbose {
+				fmt.Printf("[VERBOSE] Processing Not with 1 schema\n")
+			}
+			childSchema := a.extractSchemaDefinition(args[0])
+			if childSchema != nil {
+				schema.Not = childSchema
+			}
+		}
 	}
 }
 
@@ -503,11 +581,43 @@ func (a *ASTAnalyzer) extractObjectProperties(expr ast.Expr, schema *SchemaDefin
 
 // analyzePropertyValue analyzes a property value to determine its schema
 func (a *ASTAnalyzer) analyzePropertyValue(expr ast.Expr, propSchema *SchemaDefinition) {
-	if callExpr, ok := expr.(*ast.CallExpr); ok {
-		// This is a validator call chain like validators.String().Min(1)
-		a.analyzeValidatorCall(callExpr, propSchema)
-	} else if a.verbose {
-		fmt.Printf("[VERBOSE] Unknown property value type: %T\n", expr)
+	switch e := expr.(type) {
+	case *ast.CallExpr:
+		// Check if this is a method call on a schema variable (e.g., contactInfoSchema.Optional())
+		if selExpr, ok := e.Fun.(*ast.SelectorExpr); ok {
+			if ident, ok := selExpr.X.(*ast.Ident); ok {
+				// Check if the receiver is a tracked schema variable
+				if trackedSchema, exists := a.schemaVars[ident.Name]; exists {
+					if a.verbose {
+						fmt.Printf("[VERBOSE] Property uses schema variable: %s -> %s\n", ident.Name, trackedSchema.Type)
+					}
+					// Copy the tracked schema content first
+					*propSchema = *trackedSchema
+					// Then apply any additional method calls (like .Optional())
+					a.analyzeValidatorCall(e, propSchema)
+					return
+				}
+			}
+		}
+		// This is a regular validator call chain like validators.String().Min(1)
+		a.analyzeValidatorCall(e, propSchema)
+	case *ast.Ident:
+		// This is a bare schema variable reference (e.g., paymentMethodSchema)
+		if trackedSchema, exists := a.schemaVars[e.Name]; exists {
+			if a.verbose {
+				fmt.Printf("[VERBOSE] Property uses bare schema variable: %s -> %s\n", e.Name, trackedSchema.Type)
+			}
+			// Copy the tracked schema content
+			*propSchema = *trackedSchema
+			return
+		}
+		if a.verbose {
+			fmt.Printf("[VERBOSE] Unknown identifier reference: %s\n", e.Name)
+		}
+	default:
+		if a.verbose {
+			fmt.Printf("[VERBOSE] Unknown property value type: %T\n", expr)
+		}
 	}
 }
 
@@ -525,4 +635,140 @@ func (a *ASTAnalyzer) isRouterRegister(callExpr *ast.CallExpr) bool {
 		return selExpr.Sel.Name == "Register"
 	}
 	return false
+}
+
+// extractLiteralValue extracts various literal values (string, number, bool, map, slice)
+func (a *ASTAnalyzer) extractLiteralValue(expr ast.Expr) interface{} {
+	switch e := expr.(type) {
+	case *ast.BasicLit:
+		switch e.Kind {
+		case token.STRING:
+			// Remove quotes and handle escape sequences
+			if len(e.Value) >= 2 {
+				return e.Value[1 : len(e.Value)-1] // Remove surrounding quotes
+			}
+			return e.Value
+		case token.INT:
+			// Parse as int or float
+			if val := a.extractNumberLiteral(expr); val != nil {
+				// If it's a whole number, return as int
+				if *val == float64(int(*val)) {
+					return int(*val)
+				}
+				return *val
+			}
+		case token.FLOAT:
+			if val := a.extractNumberLiteral(expr); val != nil {
+				return *val
+			}
+		}
+	case *ast.Ident:
+		// Handle boolean literals
+		switch e.Name {
+		case "true":
+			return true
+		case "false":
+			return false
+		}
+	case *ast.CompositeLit:
+		// Handle map and slice literals
+		return a.extractCompositeLiteral(e)
+	}
+	return nil
+}
+
+// extractCompositeLiteral extracts map or slice literals
+func (a *ASTAnalyzer) extractCompositeLiteral(expr *ast.CompositeLit) interface{} {
+	// Check if it's a map literal
+	if len(expr.Elts) > 0 {
+		if _, ok := expr.Elts[0].(*ast.KeyValueExpr); ok {
+			// It's a map
+			result := make(map[string]interface{})
+			for _, elt := range expr.Elts {
+				if kv, ok := elt.(*ast.KeyValueExpr); ok {
+					if key := a.extractStringLiteral(kv.Key); key != "" {
+						if value := a.extractLiteralValue(kv.Value); value != nil {
+							result[key] = value
+						}
+					}
+				}
+			}
+			return result
+		} else {
+			// It's a slice
+			var result []interface{}
+			for _, elt := range expr.Elts {
+				if value := a.extractLiteralValue(elt); value != nil {
+					result = append(result, value)
+				}
+			}
+			return result
+		}
+	}
+	return nil
+}
+
+// extractExamplesMap extracts a map of ExampleObject structures
+func (a *ASTAnalyzer) extractExamplesMap(expr ast.Expr) map[string]ExampleObject {
+	if compositeLit, ok := expr.(*ast.CompositeLit); ok {
+		result := make(map[string]ExampleObject)
+
+		for _, elt := range compositeLit.Elts {
+			if kv, ok := elt.(*ast.KeyValueExpr); ok {
+				// Extract the key (example name)
+				key := a.extractStringLiteral(kv.Key)
+				if key == "" {
+					continue
+				}
+
+				// Extract the ExampleObject struct
+				if exampleObj := a.extractExampleObject(kv.Value); exampleObj != nil {
+					result[key] = *exampleObj
+				}
+			}
+		}
+
+		if len(result) > 0 {
+			return result
+		}
+	}
+	return nil
+}
+
+// extractExampleObject extracts an ExampleObject struct from AST
+func (a *ASTAnalyzer) extractExampleObject(expr ast.Expr) *ExampleObject {
+	if compositeLit, ok := expr.(*ast.CompositeLit); ok {
+		example := &ExampleObject{}
+
+		for _, elt := range compositeLit.Elts {
+			if kv, ok := elt.(*ast.KeyValueExpr); ok {
+				fieldName := ""
+				if ident, ok := kv.Key.(*ast.Ident); ok {
+					fieldName = ident.Name
+				}
+
+				switch fieldName {
+				case "Summary":
+					if val := a.extractStringLiteral(kv.Value); val != "" {
+						example.Summary = val
+					}
+				case "Description":
+					if val := a.extractStringLiteral(kv.Value); val != "" {
+						example.Description = val
+					}
+				case "Value":
+					if val := a.extractLiteralValue(kv.Value); val != nil {
+						example.Value = val
+					}
+				case "ExternalValue":
+					if val := a.extractStringLiteral(kv.Value); val != "" {
+						example.ExternalValue = val
+					}
+				}
+			}
+		}
+
+		return example
+	}
+	return nil
 }

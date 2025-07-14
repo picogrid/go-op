@@ -9,23 +9,29 @@ import (
 
 // Core object schema struct (unexported)
 type objectSchema struct {
-	schema       map[string]interface{}
-	strictMode   bool
-	partialMode  bool
-	customFunc   func(map[string]interface{}) error
-	required     bool
-	optional     bool
-	defaultValue map[string]interface{}
-	customError  map[string]string
+	schema        map[string]interface{}
+	strictMode    bool
+	partialMode   bool
+	customFunc    func(map[string]interface{}) error
+	required      bool
+	optional      bool
+	defaultValue  map[string]interface{}
+	customError   map[string]string
+	example       interface{}
+	examples      map[string]ExampleObject
+	externalValue string
 }
 
 // Core bool schema struct (unexported)
 type boolSchema struct {
-	customFunc   func(bool) error
-	required     bool
-	optional     bool
-	defaultValue *bool
-	customError  map[string]string
+	customFunc    func(bool) error
+	required      bool
+	optional      bool
+	defaultValue  *bool
+	customError   map[string]string
+	example       interface{}
+	examples      map[string]ExampleObject
+	externalValue string
 }
 
 // State wrapper types for objects
@@ -411,6 +417,102 @@ func (b *boolSchema) validate(data interface{}) error {
 	}
 
 	return nil
+}
+
+// Example methods for ObjectBuilder
+func (o *objectSchema) Example(value interface{}) ObjectBuilder {
+	o.example = value
+	return o
+}
+
+func (o *objectSchema) Examples(examples map[string]ExampleObject) ObjectBuilder {
+	o.examples = examples
+	return o
+}
+
+func (o *objectSchema) ExampleFromFile(path string) ObjectBuilder {
+	o.externalValue = path
+	return o
+}
+
+// Example methods for RequiredObjectBuilder
+func (r *requiredObjectSchema) Example(value interface{}) RequiredObjectBuilder {
+	r.example = value
+	return r
+}
+
+func (r *requiredObjectSchema) Examples(examples map[string]ExampleObject) RequiredObjectBuilder {
+	r.examples = examples
+	return r
+}
+
+func (r *requiredObjectSchema) ExampleFromFile(path string) RequiredObjectBuilder {
+	r.externalValue = path
+	return r
+}
+
+// Example methods for OptionalObjectBuilder
+func (o *optionalObjectSchema) Example(value interface{}) OptionalObjectBuilder {
+	o.example = value
+	return o
+}
+
+func (o *optionalObjectSchema) Examples(examples map[string]ExampleObject) OptionalObjectBuilder {
+	o.examples = examples
+	return o
+}
+
+func (o *optionalObjectSchema) ExampleFromFile(path string) OptionalObjectBuilder {
+	o.externalValue = path
+	return o
+}
+
+// Example methods for BoolBuilder
+func (b *boolSchema) Example(value interface{}) BoolBuilder {
+	b.example = value
+	return b
+}
+
+func (b *boolSchema) Examples(examples map[string]ExampleObject) BoolBuilder {
+	b.examples = examples
+	return b
+}
+
+func (b *boolSchema) ExampleFromFile(path string) BoolBuilder {
+	b.externalValue = path
+	return b
+}
+
+// Example methods for RequiredBoolBuilder
+func (r *requiredBoolSchema) Example(value interface{}) RequiredBoolBuilder {
+	r.example = value
+	return r
+}
+
+func (r *requiredBoolSchema) Examples(examples map[string]ExampleObject) RequiredBoolBuilder {
+	r.examples = examples
+	return r
+}
+
+func (r *requiredBoolSchema) ExampleFromFile(path string) RequiredBoolBuilder {
+	r.externalValue = path
+	return r
+}
+
+// Example methods for OptionalBoolBuilder
+func (o *optionalBoolSchema) Example(value interface{}) OptionalBoolBuilder {
+	o.example = value
+	return o
+}
+
+func (o *optionalBoolSchema) Examples(examples map[string]ExampleObject) OptionalBoolBuilder {
+	o.examples = examples
+	return o
+}
+
+func (o *optionalBoolSchema) ExampleFromFile(path string) OptionalBoolBuilder {
+	o.externalValue = path
+	return o
 }
 
 func (b *boolSchema) getErrorMessage(validationType, defaultMessage string) string {

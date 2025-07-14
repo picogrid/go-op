@@ -44,6 +44,20 @@ type Address struct {
 	Country    string `json:"country"`
 }
 
+// PaymentMethod represents different payment methods (OneOf example)
+type PaymentMethod struct {
+	Type string                 `json:"type"`
+	Data map[string]interface{} `json:"data"`
+}
+
+// ShippingMethod represents different shipping options (OneOf example)
+type ShippingMethod struct {
+	Type          string  `json:"type"`
+	Provider      string  `json:"provider"`
+	Cost          float64 `json:"cost"`
+	EstimatedDays int     `json:"estimated_days"`
+}
+
 // CreateOrderRequest represents the request body for creating an order
 type CreateOrderRequest struct {
 	UserID          string            `json:"user_id"`
@@ -354,18 +368,403 @@ func main() {
 
 	router := operations.NewRouter(engine, openAPIGen)
 
-	// Define comprehensive schemas
+	// ===== OneOf Schema Examples for E-commerce =====
+	// These demonstrate complex OneOf patterns for flexible payment and shipping options
+
+	// Payment method OneOf - credit card, PayPal, bank transfer, crypto
+	creditCardPaymentSchema := validators.Object(map[string]interface{}{
+		"type": validators.String().Pattern("^credit_card$").
+			Example("credit_card").
+			Required(),
+		"card_number": validators.String().Pattern(`^\d{16}$`).
+			Example("1234567890123456").
+			Required(),
+		"expiry_month": validators.Number().Min(1).Max(12).
+			Example(12).
+			Required(),
+		"expiry_year": validators.Number().Min(2024).Max(2034).
+			Example(2025).
+			Required(),
+		"cvv": validators.String().Pattern(`^\d{3,4}$`).
+			Example("123").
+			Required(),
+		"cardholder_name": validators.String().Min(2).Max(100).
+			Example("John Doe").
+			Required(),
+		"billing_zip": validators.String().Pattern(`^\d{5}(-\d{4})?$`).
+			Example("10001").
+			Optional(),
+	}).Example(map[string]interface{}{
+		"type":            "credit_card",
+		"card_number":     "1234567890123456",
+		"expiry_month":    12,
+		"expiry_year":     2025,
+		"cvv":             "123",
+		"cardholder_name": "John Doe",
+		"billing_zip":     "10001",
+	}).Required()
+
+	paypalPaymentSchema := validators.Object(map[string]interface{}{
+		"type": validators.String().Pattern("^paypal$").
+			Example("paypal").
+			Required(),
+		"email": validators.String().Email().
+			Example("payment@example.com").
+			Required(),
+		"payer_id": validators.String().Min(10).Max(20).
+			Example("PAYERID123456789").
+			Optional(),
+	}).Example(map[string]interface{}{
+		"type":     "paypal",
+		"email":    "payment@example.com",
+		"payer_id": "PAYERID123456789",
+	}).Required()
+
+	bankTransferPaymentSchema := validators.Object(map[string]interface{}{
+		"type": validators.String().Pattern("^bank_transfer$").
+			Example("bank_transfer").
+			Required(),
+		"account_number": validators.String().Pattern(`^\d{10,12}$`).
+			Example("1234567890").
+			Required(),
+		"routing_number": validators.String().Pattern(`^\d{9}$`).
+			Example("123456789").
+			Required(),
+		"account_type": validators.String().
+			Examples(map[string]validators.ExampleObject{
+				"checking": {
+					Summary:     "Checking account",
+					Description: "Standard checking account for everyday transactions",
+					Value:       "checking",
+				},
+				"savings": {
+					Summary:     "Savings account",
+					Description: "Savings account with higher interest",
+					Value:       "savings",
+				},
+			}).
+			Required(),
+		"bank_name": validators.String().Min(2).Max(100).
+			Example("Chase Bank").
+			Optional(),
+	}).Example(map[string]interface{}{
+		"type":           "bank_transfer",
+		"account_number": "1234567890",
+		"routing_number": "123456789",
+		"account_type":   "checking",
+		"bank_name":      "Chase Bank",
+	}).Required()
+
+	cryptoPaymentSchema := validators.Object(map[string]interface{}{
+		"type": validators.String().Pattern("^crypto$").
+			Example("crypto").
+			Required(),
+		"currency": validators.String().
+			Examples(map[string]validators.ExampleObject{
+				"bitcoin": {
+					Summary:     "Bitcoin",
+					Description: "Bitcoin cryptocurrency payment",
+					Value:       "BTC",
+				},
+				"ethereum": {
+					Summary:     "Ethereum",
+					Description: "Ethereum cryptocurrency payment",
+					Value:       "ETH",
+				},
+				"litecoin": {
+					Summary:     "Litecoin",
+					Description: "Litecoin cryptocurrency payment",
+					Value:       "LTC",
+				},
+			}).
+			Required(),
+		"wallet_address": validators.String().Min(26).Max(62).
+			Example("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa").
+			Required(),
+		"network": validators.String().
+			Example("mainnet").
+			Optional().Default("mainnet"),
+	}).Example(map[string]interface{}{
+		"type":           "crypto",
+		"currency":       "BTC",
+		"wallet_address": "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
+		"network":        "mainnet",
+	}).Required()
+
+	// OneOf payment method schema
+	paymentMethodSchema := validators.OneOf(
+		creditCardPaymentSchema,
+		paypalPaymentSchema,
+		bankTransferPaymentSchema,
+		cryptoPaymentSchema,
+	).Required()
+
+	// Shipping method OneOf - standard, expedited, overnight, pickup
+	standardShippingSchema := validators.Object(map[string]interface{}{
+		"type": validators.String().Pattern("^standard$").
+			Example("standard").
+			Required(),
+		"provider": validators.String().
+			Examples(map[string]validators.ExampleObject{
+				"usps": {
+					Summary:     "USPS Standard",
+					Description: "United States Postal Service standard shipping",
+					Value:       "USPS",
+				},
+				"ups": {
+					Summary:     "UPS Ground",
+					Description: "UPS standard ground shipping",
+					Value:       "UPS",
+				},
+				"fedex": {
+					Summary:     "FedEx Ground",
+					Description: "FedEx standard ground shipping",
+					Value:       "FedEx",
+				},
+			}).
+			Required(),
+		"estimated_days": validators.Number().Min(3).Max(10).
+			Example(5).
+			Required(),
+		"cost": validators.Number().Min(0).
+			Example(9.99).
+			Required(),
+		"tracking_available": validators.Bool().
+			Example(true).
+			Optional().Default(true),
+	}).Example(map[string]interface{}{
+		"type":               "standard",
+		"provider":           "UPS",
+		"estimated_days":     5,
+		"cost":               9.99,
+		"tracking_available": true,
+	}).Required()
+
+	expeditedShippingSchema := validators.Object(map[string]interface{}{
+		"type": validators.String().Pattern("^expedited$").
+			Example("expedited").
+			Required(),
+		"provider": validators.String().
+			Example("FedEx").
+			Required(),
+		"estimated_days": validators.Number().Min(1).Max(3).
+			Example(2).
+			Required(),
+		"cost": validators.Number().Min(0).
+			Example(19.99).
+			Required(),
+		"signature_required": validators.Bool().
+			Example(false).
+			Optional().Default(false),
+	}).Example(map[string]interface{}{
+		"type":               "expedited",
+		"provider":           "FedEx",
+		"estimated_days":     2,
+		"cost":               19.99,
+		"signature_required": false,
+	}).Required()
+
+	overnightShippingSchema := validators.Object(map[string]interface{}{
+		"type": validators.String().Pattern("^overnight$").
+			Example("overnight").
+			Required(),
+		"provider": validators.String().
+			Example("FedEx").
+			Required(),
+		"estimated_days": validators.Number().Min(1).Max(1).
+			Example(1).
+			Required(),
+		"cost": validators.Number().Min(0).
+			Example(39.99).
+			Required(),
+		"delivery_time": validators.String().
+			Examples(map[string]validators.ExampleObject{
+				"morning": {
+					Summary:     "Morning delivery",
+					Description: "Delivery before 10:30 AM",
+					Value:       "10:30 AM",
+				},
+				"afternoon": {
+					Summary:     "Afternoon delivery",
+					Description: "Delivery before 5:00 PM",
+					Value:       "5:00 PM",
+				},
+			}).
+			Optional(),
+		"signature_required": validators.Bool().
+			Example(true).
+			Optional().Default(true),
+	}).Example(map[string]interface{}{
+		"type":               "overnight",
+		"provider":           "FedEx",
+		"estimated_days":     1,
+		"cost":               39.99,
+		"delivery_time":      "10:30 AM",
+		"signature_required": true,
+	}).Required()
+
+	pickupShippingSchema := validators.Object(map[string]interface{}{
+		"type": validators.String().Pattern("^pickup$").
+			Example("pickup").
+			Required(),
+		"location": validators.String().Min(5).Max(200).
+			Example("123 Store Street, New York, NY 10001").
+			Required(),
+		"store_hours": validators.String().
+			Example("9:00 AM - 9:00 PM").
+			Required(),
+		"cost": validators.Number().Min(0).
+			Example(0).
+			Required(),
+		"estimated_days": validators.Number().Min(1).Max(3).
+			Example(2).
+			Required(),
+		"special_instructions": validators.String().Max(500).
+			Example("Please bring photo ID for pickup verification").
+			Optional(),
+	}).Example(map[string]interface{}{
+		"type":                 "pickup",
+		"location":             "123 Store Street, New York, NY 10001",
+		"store_hours":          "9:00 AM - 9:00 PM",
+		"cost":                 0,
+		"estimated_days":       2,
+		"special_instructions": "Please bring photo ID for pickup verification",
+	}).Required()
+
+	// OneOf shipping method schema
+	shippingMethodSchema := validators.OneOf(
+		standardShippingSchema,
+		expeditedShippingSchema,
+		overnightShippingSchema,
+		pickupShippingSchema,
+	).Required()
+
+	// Define comprehensive schemas with rich examples
 	addressSchema := validators.Object(map[string]interface{}{
-		"street":      validators.String().Min(1).Max(255).Required(),
-		"city":        validators.String().Min(1).Max(100).Required(),
-		"state":       validators.String().Min(2).Max(100).Required(),
-		"postal_code": validators.String().Min(3).Max(20).Pattern("^[0-9A-Za-z\\s-]+$").Required(),
-		"country":     validators.String().Min(2).Max(3).Pattern("^[A-Z]{2,3}$").Required(),
+		"street": validators.String().Min(1).Max(255).
+			Examples(map[string]validators.ExampleObject{
+				"residential": {
+					Summary:     "Residential address",
+					Description: "Typical home address format",
+					Value:       "123 Oak Street",
+				},
+				"apartment": {
+					Summary:     "Apartment address",
+					Description: "Address with apartment number",
+					Value:       "456 Elm Ave, Apt 2B",
+				},
+				"business": {
+					Summary:     "Business address",
+					Description: "Commercial building address",
+					Value:       "789 Corporate Blvd, Suite 100",
+				},
+			}).
+			Required(),
+		"city": validators.String().Min(1).Max(100).
+			Example("New York").
+			Required(),
+		"state": validators.String().Min(2).Max(100).
+			Examples(map[string]validators.ExampleObject{
+				"abbreviated": {
+					Summary:     "State abbreviation",
+					Description: "Two-letter state code",
+					Value:       "NY",
+				},
+				"full_name": {
+					Summary:     "Full state name",
+					Description: "Complete state name",
+					Value:       "New York",
+				},
+			}).
+			Required(),
+		"postal_code": validators.String().Min(3).Max(20).Pattern("^[0-9A-Za-z\\s-]+$").
+			Examples(map[string]validators.ExampleObject{
+				"us_zip": {
+					Summary:     "US ZIP code",
+					Description: "Standard 5-digit US postal code",
+					Value:       "10001",
+				},
+				"us_zip_plus4": {
+					Summary:     "US ZIP+4 code",
+					Description: "Extended 9-digit US postal code",
+					Value:       "10001-1234",
+				},
+				"uk_postcode": {
+					Summary:     "UK postcode",
+					Description: "British postal code format",
+					Value:       "SW1A 1AA",
+				},
+			}).
+			Required(),
+		"country": validators.String().Min(2).Max(3).Pattern("^[A-Z]{2,3}$").
+			Examples(map[string]validators.ExampleObject{
+				"us": {
+					Summary:     "United States",
+					Description: "ISO country code for USA",
+					Value:       "US",
+				},
+				"uk": {
+					Summary:     "United Kingdom",
+					Description: "ISO country code for UK",
+					Value:       "GB",
+				},
+				"canada": {
+					Summary:     "Canada",
+					Description: "ISO country code for Canada",
+					Value:       "CA",
+				},
+			}).
+			Required(),
+	}).Example(map[string]interface{}{
+		"street":      "123 Oak Street",
+		"city":        "New York",
+		"state":       "NY",
+		"postal_code": "10001",
+		"country":     "US",
 	}).Required()
 
 	createOrderItemSchema := validators.Object(map[string]interface{}{
-		"product_id": validators.String().Min(1).Pattern("^prod_[a-zA-Z0-9]+$").Required(),
-		"quantity":   validators.Number().Min(1).Max(100).Required(),
+		"product_id": validators.String().Min(1).Pattern("^prod_[a-zA-Z0-9]+$").
+			Examples(map[string]validators.ExampleObject{
+				"electronics": {
+					Summary:     "Electronics product",
+					Description: "ID for electronic devices and gadgets",
+					Value:       "prod_headphones_123",
+				},
+				"clothing": {
+					Summary:     "Clothing product",
+					Description: "ID for apparel and fashion items",
+					Value:       "prod_shirt_456",
+				},
+				"books": {
+					Summary:     "Book product",
+					Description: "ID for books and publications",
+					Value:       "prod_book_789",
+				},
+			}).
+			Required(),
+		"quantity": validators.Number().Min(1).Max(100).
+			Examples(map[string]validators.ExampleObject{
+				"single": {
+					Summary:     "Single item",
+					Description: "Ordering just one unit",
+					Value:       1,
+				},
+				"multiple": {
+					Summary:     "Multiple items",
+					Description: "Bulk order of several units",
+					Value:       5,
+				},
+				"bulk": {
+					Summary:     "Bulk order",
+					Description: "Large quantity for wholesale",
+					Value:       25,
+				},
+			}).
+			Required(),
+	}).Example(map[string]interface{}{
+		"product_id": "prod_headphones_123",
+		"quantity":   2,
 	}).Required()
 
 	createOrderBodySchema := validators.Object(map[string]interface{}{
@@ -374,6 +773,55 @@ func main() {
 		"currency":         validators.String().Min(3).Max(3).Pattern("^[A-Z]{3}$").Optional().Default("USD"),
 		"shipping_address": addressSchema,
 		"billing_address":  addressSchema,
+		"payment_method":   paymentMethodSchema,
+		"shipping_method":  shippingMethodSchema,
+		"special_instructions": validators.String().Max(1000).
+			Examples(map[string]validators.ExampleObject{
+				"fragile": {
+					Summary:     "Fragile item instructions",
+					Description: "Instructions for handling fragile or delicate items",
+					Value:       "Please handle with care - contains fragile electronics",
+				},
+				"gift": {
+					Summary:     "Gift wrapping instructions",
+					Description: "Instructions for gift wrapping and presentation",
+					Value:       "Please gift wrap with premium paper and include gift receipt",
+				},
+			}).Optional(),
+	}).Example(map[string]interface{}{
+		"user_id": "usr_12345",
+		"items": []map[string]interface{}{
+			{
+				"product_id": "prod_headphones_123",
+				"quantity":   1,
+			},
+		},
+		"currency": "USD",
+		"shipping_address": map[string]interface{}{
+			"street":      "123 Oak Street",
+			"city":        "New York",
+			"state":       "NY",
+			"postal_code": "10001",
+			"country":     "US",
+		},
+		"billing_address": map[string]interface{}{
+			"street":      "123 Oak Street",
+			"city":        "New York",
+			"state":       "NY",
+			"postal_code": "10001",
+			"country":     "US",
+		},
+		"payment_method": map[string]interface{}{
+			"type":            "credit_card",
+			"card_number":     "1234567890123456",
+			"cardholder_name": "John Doe",
+			"cvv":             "123",
+		},
+		"shipping_method": map[string]interface{}{
+			"type":     "expedited",
+			"provider": "FedEx",
+		},
+		"special_instructions": "Please handle with care - contains fragile electronics",
 	}).Required()
 
 	updateOrderStatusBodySchema := validators.Object(map[string]interface{}{
@@ -511,6 +959,24 @@ func main() {
 		WithResponse(analyticsResponseSchema).
 		Handler(operations.CreateValidatedHandler(getOrderAnalyticsHandler, nil, analyticsQuerySchema, nil, analyticsResponseSchema))
 
+	// New operation showcasing OneOf for payment and shipping methods
+	createAdvancedOrderOp := operations.NewSimple().
+		POST("/orders/advanced").
+		Summary("Create order with flexible payment and shipping options").
+		Description("Creates an order with OneOf support for multiple payment methods (credit card, PayPal, bank transfer, crypto) "+
+			"and shipping options (standard, expedited, overnight, pickup). This endpoint demonstrates how OneOf schemas "+
+			"provide flexible API design for e-commerce platforms where customers can choose from various payment and shipping methods.").
+		Tags("orders", "e-commerce", "oneof-example", "payment", "shipping").
+		WithBody(createOrderBodySchema).
+		WithResponse(orderResponseSchema).
+		Handler(operations.CreateValidatedHandler(
+			createOrderHandler, // Reuse existing handler for demo
+			nil,
+			nil,
+			createOrderBodySchema,
+			orderResponseSchema,
+		))
+
 	// Register operations
 	router.Register(createOrderOp)
 	router.Register(getOrderOp)
@@ -518,6 +984,7 @@ func main() {
 	router.Register(cancelOrderOp)
 	router.Register(listOrdersOp)
 	router.Register(getAnalyticsOp)
+	router.Register(createAdvancedOrderOp) // OneOf showcase operation
 
 	// Health check
 	engine.GET("/health", func(c *gin.Context) {

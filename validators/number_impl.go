@@ -10,16 +10,19 @@ import (
 // Core number schema struct (unexported)
 // This contains all the validation configuration and is wrapped by state-specific types
 type numberSchema struct {
-	minValue     *float64
-	maxValue     *float64
-	integerOnly  bool
-	positiveOnly bool
-	negativeOnly bool
-	customFunc   func(float64) error
-	required     bool
-	optional     bool
-	defaultValue *float64
-	customError  map[string]string
+	minValue      *float64
+	maxValue      *float64
+	integerOnly   bool
+	positiveOnly  bool
+	negativeOnly  bool
+	customFunc    func(float64) error
+	required      bool
+	optional      bool
+	defaultValue  *float64
+	customError   map[string]string
+	example       interface{}
+	examples      map[string]ExampleObject
+	externalValue string
 }
 
 // State wrapper types for compile-time safety
@@ -326,6 +329,54 @@ func (n *numberSchema) validate(data interface{}) error {
 	}
 
 	return nil
+}
+
+// Example methods for NumberBuilder
+func (n *numberSchema) Example(value interface{}) NumberBuilder {
+	n.example = value
+	return n
+}
+
+func (n *numberSchema) Examples(examples map[string]ExampleObject) NumberBuilder {
+	n.examples = examples
+	return n
+}
+
+func (n *numberSchema) ExampleFromFile(path string) NumberBuilder {
+	n.externalValue = path
+	return n
+}
+
+// Example methods for RequiredNumberBuilder
+func (r *requiredNumberSchema) Example(value interface{}) RequiredNumberBuilder {
+	r.example = value
+	return r
+}
+
+func (r *requiredNumberSchema) Examples(examples map[string]ExampleObject) RequiredNumberBuilder {
+	r.examples = examples
+	return r
+}
+
+func (r *requiredNumberSchema) ExampleFromFile(path string) RequiredNumberBuilder {
+	r.externalValue = path
+	return r
+}
+
+// Example methods for OptionalNumberBuilder
+func (o *optionalNumberSchema) Example(value interface{}) OptionalNumberBuilder {
+	o.example = value
+	return o
+}
+
+func (o *optionalNumberSchema) Examples(examples map[string]ExampleObject) OptionalNumberBuilder {
+	o.examples = examples
+	return o
+}
+
+func (o *optionalNumberSchema) ExampleFromFile(path string) OptionalNumberBuilder {
+	o.externalValue = path
+	return o
 }
 
 // Helper methods (unexported)

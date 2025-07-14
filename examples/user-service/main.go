@@ -85,6 +85,18 @@ type ErrorResponse struct {
 	Code    int    `json:"code"`
 }
 
+// ContactInfo represents different ways to contact a user (showcases OneOf)
+type ContactInfo struct {
+	Type  string `json:"type"`
+	Value string `json:"value"`
+}
+
+// NotificationPreference represents different notification types (showcases OneOf)
+type NotificationPreference struct {
+	Type     string                 `json:"type"`
+	Settings map[string]interface{} `json:"settings"`
+}
+
 // Business logic handlers
 func createUserHandler(ctx context.Context, params struct{}, query struct{}, body CreateUserRequest) (User, error) {
 	// Simulate user creation
@@ -244,55 +256,504 @@ func main() {
 	// Create router with generators
 	router := operations.NewRouter(engine, openAPIGen)
 
-	// Define schemas using go-op validators
+	// ===== OneOf Schema Examples =====
+	// These demonstrate complex OneOf patterns for API flexibility
+
+	// Contact method OneOf - email, phone, or social media
+	emailContactSchema := validators.Object(map[string]interface{}{
+		"type": validators.String().Pattern("^email$").
+			Example("email").
+			Required(),
+		"email": validators.String().Email().
+			Example("contact@example.com").
+			Required(),
+		"verified": validators.Bool().
+			Example(true).
+			Optional(),
+	}).Example(map[string]interface{}{
+		"type":     "email",
+		"email":    "contact@example.com",
+		"verified": true,
+	}).Required()
+
+	phoneContactSchema := validators.Object(map[string]interface{}{
+		"type": validators.String().Pattern("^phone$").
+			Example("phone").
+			Required(),
+		"phone": validators.String().Pattern(`^\+?[1-9]\d{1,14}$`).
+			Example("+1234567890").
+			Required(),
+		"country_code": validators.String().Pattern("^[A-Z]{2}$").
+			Example("US").
+			Optional(),
+	}).Example(map[string]interface{}{
+		"type":         "phone",
+		"phone":        "+1234567890",
+		"country_code": "US",
+	}).Required()
+
+	socialContactSchema := validators.Object(map[string]interface{}{
+		"type": validators.String().Pattern("^social$").
+			Example("social").
+			Required(),
+		"platform": validators.String().
+			Examples(map[string]validators.ExampleObject{
+				"twitter": {
+					Summary:     "Twitter handle",
+					Description: "Twitter/X platform contact",
+					Value:       "twitter",
+				},
+				"linkedin": {
+					Summary:     "LinkedIn profile",
+					Description: "LinkedIn professional network",
+					Value:       "linkedin",
+				},
+				"github": {
+					Summary:     "GitHub profile",
+					Description: "GitHub developer profile",
+					Value:       "github",
+				},
+			}).
+			Required(),
+		"handle": validators.String().Min(1).
+			Example("@johndoe").
+			Required(),
+	}).Example(map[string]interface{}{
+		"type":     "social",
+		"platform": "twitter",
+		"handle":   "@johndoe",
+	}).Required()
+
+	// OneOf contact schema combining all contact methods
+	contactInfoSchema := validators.OneOf(
+		emailContactSchema,
+		phoneContactSchema,
+		socialContactSchema,
+	).Required()
+
+	// Notification preferences OneOf - email, SMS, push, or webhook
+	emailNotificationSchema := validators.Object(map[string]interface{}{
+		"type": validators.String().Pattern("^email$").
+			Example("email").
+			Required(),
+		"email_address": validators.String().Email().
+			Example("notifications@example.com").
+			Required(),
+		"frequency": validators.String().
+			Examples(map[string]validators.ExampleObject{
+				"immediate": {
+					Summary:     "Immediate notifications",
+					Description: "Send notifications immediately as events occur",
+					Value:       "immediate",
+				},
+				"daily": {
+					Summary:     "Daily digest",
+					Description: "Send a daily summary of notifications",
+					Value:       "daily",
+				},
+				"weekly": {
+					Summary:     "Weekly summary",
+					Description: "Send a weekly compilation of notifications",
+					Value:       "weekly",
+				},
+			}).
+			Optional().Default("immediate"),
+	}).Example(map[string]interface{}{
+		"type":          "email",
+		"email_address": "notifications@example.com",
+		"frequency":     "immediate",
+	}).Required()
+
+	smsNotificationSchema := validators.Object(map[string]interface{}{
+		"type": validators.String().Pattern("^sms$").
+			Example("sms").
+			Required(),
+		"phone_number": validators.String().Pattern(`^\+?[1-9]\d{1,14}$`).
+			Example("+1234567890").
+			Required(),
+		"carrier": validators.String().
+			Example("verizon").
+			Optional(),
+	}).Example(map[string]interface{}{
+		"type":         "sms",
+		"phone_number": "+1234567890",
+		"carrier":      "verizon",
+	}).Required()
+
+	pushNotificationSchema := validators.Object(map[string]interface{}{
+		"type": validators.String().Pattern("^push$").
+			Example("push").
+			Required(),
+		"device_tokens": validators.Array(validators.String()).
+			Example([]interface{}{
+				"device_token_abc123",
+				"device_token_def456",
+			}).
+			Required(),
+		"sound": validators.Bool().
+			Example(true).
+			Optional().Default(true),
+		"badge": validators.Bool().
+			Example(true).
+			Optional().Default(true),
+	}).Example(map[string]interface{}{
+		"type": "push",
+		"device_tokens": []interface{}{
+			"device_token_abc123",
+			"device_token_def456",
+		},
+		"sound": true,
+		"badge": true,
+	}).Required()
+
+	webhookNotificationSchema := validators.Object(map[string]interface{}{
+		"type": validators.String().Pattern("^webhook$").
+			Example("webhook").
+			Required(),
+		"url": validators.String().Pattern(`^https?://`).
+			Example("https://api.example.com/webhooks/notifications").
+			Required(),
+		"secret": validators.String().Min(16).
+			Example("webhook_secret_key_12345").
+			Optional(),
+		"headers": validators.Object(map[string]interface{}{
+			"Authorization": validators.String().Optional(),
+			"Content-Type":  validators.String().Optional(),
+		}).Optional(),
+	}).Example(map[string]interface{}{
+		"type":   "webhook",
+		"url":    "https://api.example.com/webhooks/notifications",
+		"secret": "webhook_secret_key_12345",
+		"headers": map[string]interface{}{
+			"Authorization": "Bearer token123",
+			"Content-Type":  "application/json",
+		},
+	}).Required()
+
+	// OneOf notification preference schema
+	notificationPreferenceSchema := validators.OneOf(
+		emailNotificationSchema,
+		smsNotificationSchema,
+		pushNotificationSchema,
+		webhookNotificationSchema,
+	).Required()
+
+	// User profile update with OneOf fields
+	updateUserProfileBodySchema := validators.Object(map[string]interface{}{
+		"basic_info": validators.Object(map[string]interface{}{
+			"first_name": validators.String().Min(1).Max(100).
+				Example("Jane").
+				Optional(),
+			"last_name": validators.String().Min(1).Max(100).
+				Example("Smith").
+				Optional(),
+			"age": validators.Number().Min(13).Max(120).
+				Example(28).
+				Optional(),
+		}).Optional(),
+		"contact_method":          contactInfoSchema.Optional(),
+		"notification_preference": notificationPreferenceSchema.Optional(),
+		"is_active": validators.Bool().
+			Example(true).
+			Optional(),
+	}).Example(map[string]interface{}{
+		"basic_info": map[string]interface{}{
+			"first_name": "Jane",
+			"last_name":  "Smith",
+			"age":        28,
+		},
+		"contact_method": map[string]interface{}{
+			"type":     "email",
+			"email":    "jane.smith@example.com",
+			"verified": true,
+		},
+		"notification_preference": map[string]interface{}{
+			"type":          "email",
+			"email_address": "jane.notifications@example.com",
+			"frequency":     "daily",
+		},
+		"is_active": true,
+	}).Optional()
+
+	// Define schemas using go-op validators with comprehensive examples
 	createUserBodySchema := validators.Object(map[string]interface{}{
-		"email":      validators.String().Email().Required(),
-		"username":   validators.String().Min(3).Max(50).Pattern("^[a-zA-Z0-9_]+$").Required(),
-		"first_name": validators.String().Min(1).Max(100).Required(),
-		"last_name":  validators.String().Min(1).Max(100).Required(),
-		"age":        validators.Number().Min(13).Max(120).Required(),
-		"password":   validators.String().Min(8).Max(128).Required(),
+		"email": validators.String().Email().
+			Example("john.doe@example.com").
+			Required(),
+		"username": validators.String().Min(3).Max(50).Pattern("^[a-zA-Z0-9_]+$").
+			Examples(map[string]validators.ExampleObject{
+				"simple": {
+					Summary:     "Simple username",
+					Description: "A basic alphanumeric username",
+					Value:       "johndoe",
+				},
+				"with_underscore": {
+					Summary:     "Username with underscore",
+					Description: "Username containing underscores",
+					Value:       "john_doe_123",
+				},
+			}).
+			Required(),
+		"first_name": validators.String().Min(1).Max(100).
+			Example("John").
+			Required(),
+		"last_name": validators.String().Min(1).Max(100).
+			Example("Doe").
+			Required(),
+		"age": validators.Number().Min(13).Max(120).
+			Example(25).
+			Required(),
+		"password": validators.String().Min(8).Max(128).
+			Examples(map[string]validators.ExampleObject{
+				"strong": {
+					Summary:     "Strong password",
+					Description: "A secure password with mixed characters",
+					Value:       "MyStr0ngP@ssw0rd!",
+				},
+				"simple": {
+					Summary:     "Simple password",
+					Description: "A basic but valid password",
+					Value:       "password123",
+				},
+			}).
+			Required(),
+	}).Example(map[string]interface{}{
+		"email":      "john.doe@example.com",
+		"username":   "johndoe",
+		"first_name": "John",
+		"last_name":  "Doe",
+		"age":        25,
+		"password":   "MyStr0ngP@ssw0rd!",
 	}).Required()
 
 	updateUserBodySchema := validators.Object(map[string]interface{}{
-		"email":      validators.String().Email().Optional(),
-		"first_name": validators.String().Min(1).Max(100).Optional(),
-		"last_name":  validators.String().Min(1).Max(100).Optional(),
-		"age":        validators.Number().Min(13).Max(120).Optional(),
-		"is_active":  validators.Bool().Optional(),
+		"email": validators.String().Email().
+			Example("jane.smith@example.com").
+			Optional(),
+		"first_name": validators.String().Min(1).Max(100).
+			Example("Jane").
+			Optional(),
+		"last_name": validators.String().Min(1).Max(100).
+			Example("Smith").
+			Optional(),
+		"age": validators.Number().Min(13).Max(120).
+			Example(28).
+			Optional(),
+		"is_active": validators.Bool().
+			Examples(map[string]validators.ExampleObject{
+				"active": {
+					Summary:     "Active user",
+					Description: "User account is active and can access the system",
+					Value:       true,
+				},
+				"inactive": {
+					Summary:     "Inactive user",
+					Description: "User account is disabled",
+					Value:       false,
+				},
+			}).
+			Optional(),
+	}).Example(map[string]interface{}{
+		"email":      "jane.smith@example.com",
+		"first_name": "Jane",
+		"last_name":  "Smith",
+		"age":        28,
+		"is_active":  true,
 	}).Optional()
 
 	userParamsSchema := validators.Object(map[string]interface{}{
-		"id": validators.String().Min(1).Pattern("^usr_[a-zA-Z0-9]+$").Required(),
+		"id": validators.String().Min(1).Pattern("^usr_[a-zA-Z0-9]+$").
+			Examples(map[string]validators.ExampleObject{
+				"basic": {
+					Summary:     "Basic user ID",
+					Description: "Standard user identifier format",
+					Value:       "usr_123",
+				},
+				"alphanumeric": {
+					Summary:     "Alphanumeric user ID",
+					Description: "User ID with mixed letters and numbers",
+					Value:       "usr_abc123def",
+				},
+			}).
+			Required(),
+	}).Example(map[string]interface{}{
+		"id": "usr_123",
 	}).Required()
 
 	listUsersQuerySchema := validators.Object(map[string]interface{}{
-		"page":      validators.Number().Min(1).Optional().Default(1),
-		"page_size": validators.Number().Min(1).Max(100).Optional().Default(20),
-		"search":    validators.String().Min(1).Max(255).Optional(),
-		"is_active": validators.Bool().Optional(),
-		"min_age":   validators.Number().Min(0).Max(120).Optional(),
-		"max_age":   validators.Number().Min(0).Max(120).Optional(),
+		"page": validators.Number().Min(1).
+			Example(1).
+			Optional().Default(1),
+		"page_size": validators.Number().Min(1).Max(100).
+			Examples(map[string]validators.ExampleObject{
+				"small": {
+					Summary:     "Small page size",
+					Description: "Useful for mobile apps or limited bandwidth",
+					Value:       10,
+				},
+				"default": {
+					Summary:     "Default page size",
+					Description: "Standard page size for most use cases",
+					Value:       20,
+				},
+				"large": {
+					Summary:     "Large page size",
+					Description: "For dashboards or bulk operations",
+					Value:       50,
+				},
+			}).
+			Optional().Default(20),
+		"search": validators.String().Min(1).Max(255).
+			Examples(map[string]validators.ExampleObject{
+				"name_search": {
+					Summary:     "Search by name",
+					Description: "Search for users by first or last name",
+					Value:       "John",
+				},
+				"email_search": {
+					Summary:     "Search by email",
+					Description: "Search for users by email domain",
+					Value:       "@example.com",
+				},
+			}).
+			Optional(),
+		"is_active": validators.Bool().
+			Example(true).
+			Optional(),
+		"min_age": validators.Number().Min(0).Max(120).
+			Example(18).
+			Optional(),
+		"max_age": validators.Number().Min(0).Max(120).
+			Example(65).
+			Optional(),
+	}).Example(map[string]interface{}{
+		"page":      1,
+		"page_size": 20,
+		"search":    "John",
+		"is_active": true,
+		"min_age":   18,
+		"max_age":   65,
 	}).Optional()
 
 	userResponseSchema := validators.Object(map[string]interface{}{
-		"id":         validators.String().Min(1).Required(),
-		"email":      validators.String().Email().Required(),
-		"username":   validators.String().Min(1).Required(),
-		"first_name": validators.String().Min(1).Required(),
-		"last_name":  validators.String().Min(1).Required(),
-		"age":        validators.Number().Min(0).Required(),
-		"is_active":  validators.Bool().Required(),
-		"created_at": validators.String().Required(),
-		"updated_at": validators.String().Required(),
+		"id": validators.String().Min(1).
+			Example("usr_123").
+			Required(),
+		"email": validators.String().Email().
+			Example("john.doe@example.com").
+			Required(),
+		"username": validators.String().Min(1).
+			Example("johndoe").
+			Required(),
+		"first_name": validators.String().Min(1).
+			Example("John").
+			Required(),
+		"last_name": validators.String().Min(1).
+			Example("Doe").
+			Required(),
+		"age": validators.Number().Min(0).
+			Example(25).
+			Required(),
+		"is_active": validators.Bool().
+			Example(true).
+			Required(),
+		"created_at": validators.String().
+			Example("2024-01-15T10:30:00Z").
+			Required(),
+		"updated_at": validators.String().
+			Example("2024-01-15T14:45:30Z").
+			Required(),
+	}).Example(map[string]interface{}{
+		"id":         "usr_123",
+		"email":      "john.doe@example.com",
+		"username":   "johndoe",
+		"first_name": "John",
+		"last_name":  "Doe",
+		"age":        25,
+		"is_active":  true,
+		"created_at": "2024-01-15T10:30:00Z",
+		"updated_at": "2024-01-15T14:45:30Z",
 	}).Required()
 
 	userListResponseSchema := validators.Object(map[string]interface{}{
-		"users":       validators.Array(userResponseSchema).Required(),
-		"total_count": validators.Number().Min(0).Required(),
-		"page":        validators.Number().Min(1).Required(),
-		"page_size":   validators.Number().Min(1).Required(),
-		"has_next":    validators.Bool().Required(),
+		"users": validators.Array(userResponseSchema).
+			Example([]interface{}{
+				map[string]interface{}{
+					"id":         "usr_123",
+					"email":      "john.doe@example.com",
+					"username":   "johndoe",
+					"first_name": "John",
+					"last_name":  "Doe",
+					"age":        25,
+					"is_active":  true,
+					"created_at": "2024-01-15T10:30:00Z",
+					"updated_at": "2024-01-15T14:45:30Z",
+				},
+				map[string]interface{}{
+					"id":         "usr_456",
+					"email":      "jane.smith@example.com",
+					"username":   "janesmith",
+					"first_name": "Jane",
+					"last_name":  "Smith",
+					"age":        28,
+					"is_active":  true,
+					"created_at": "2024-01-14T09:15:00Z",
+					"updated_at": "2024-01-15T11:20:15Z",
+				},
+			}).
+			Required(),
+		"total_count": validators.Number().Min(0).
+			Example(42).
+			Required(),
+		"page": validators.Number().Min(1).
+			Example(1).
+			Required(),
+		"page_size": validators.Number().Min(1).
+			Example(20).
+			Required(),
+		"has_next": validators.Bool().
+			Examples(map[string]validators.ExampleObject{
+				"more_pages": {
+					Summary:     "More pages available",
+					Description: "There are additional pages of results",
+					Value:       true,
+				},
+				"last_page": {
+					Summary:     "Last page",
+					Description: "This is the final page of results",
+					Value:       false,
+				},
+			}).
+			Required(),
+	}).Example(map[string]interface{}{
+		"users": []interface{}{
+			map[string]interface{}{
+				"id":         "usr_123",
+				"email":      "john.doe@example.com",
+				"username":   "johndoe",
+				"first_name": "John",
+				"last_name":  "Doe",
+				"age":        25,
+				"is_active":  true,
+				"created_at": "2024-01-15T10:30:00Z",
+				"updated_at": "2024-01-15T14:45:30Z",
+			},
+			map[string]interface{}{
+				"id":         "usr_456",
+				"email":      "jane.smith@example.com",
+				"username":   "janesmith",
+				"first_name": "Jane",
+				"last_name":  "Smith",
+				"age":        28,
+				"is_active":  true,
+				"created_at": "2024-01-14T09:15:00Z",
+				"updated_at": "2024-01-15T11:20:15Z",
+			},
+		},
+		"total_count": 42,
+		"page":        1,
+		"page_size":   20,
+		"has_next":    true,
 	}).Required()
 
 	// Define operations
@@ -371,12 +832,32 @@ func main() {
 			userListResponseSchema,
 		))
 
+	// New operation showcasing OneOf functionality
+	updateUserProfileOp := operations.NewSimple().
+		PATCH("/users/{id}/profile").
+		Summary("Update user profile with flexible contact and notification settings").
+		Description("Updates user profile with OneOf support for contact methods and notification preferences. "+
+			"This endpoint demonstrates how OneOf schemas enable flexible API design where clients can "+
+			"choose between different data structures (email/phone/social contact, email/SMS/push/webhook notifications).").
+		Tags("users", "profile", "oneof-example").
+		WithParams(userParamsSchema).
+		WithBody(updateUserProfileBodySchema).
+		WithResponse(userResponseSchema).
+		Handler(operations.CreateValidatedHandler(
+			updateUserHandler, // Reuse existing handler for demo
+			userParamsSchema,
+			nil,
+			updateUserProfileBodySchema,
+			userResponseSchema,
+		))
+
 	// Register operations
 	router.Register(createUserOp)
 	router.Register(getUserOp)
 	router.Register(updateUserOp)
 	router.Register(deleteUserOp)
 	router.Register(listUsersOp)
+	router.Register(updateUserProfileOp) // OneOf showcase operation
 
 	// Health check
 	engine.GET("/health", func(c *gin.Context) {

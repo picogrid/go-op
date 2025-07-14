@@ -44,6 +44,18 @@ type Template struct {
 	UpdatedAt time.Time              `json:"updated_at"`
 }
 
+// NotificationContent represents different notification content types (OneOf example)
+type NotificationContent struct {
+	Type string                 `json:"type"`
+	Data map[string]interface{} `json:"data"`
+}
+
+// DeliveryOptions represents different delivery methods (OneOf example)
+type DeliveryOptions struct {
+	Method   string                 `json:"method"`
+	Settings map[string]interface{} `json:"settings"`
+}
+
 // Request types
 type SendNotificationRequest struct {
 	UserID   string                 `json:"user_id"`
@@ -525,6 +537,388 @@ func main() {
 
 	router := operations.NewRouter(engine, openAPIGen)
 
+	// ===== OneOf Schema Examples for Notification Service =====
+	// These demonstrate complex OneOf patterns for flexible notification content and delivery options
+
+	// Notification content OneOf - text, rich text, HTML, markdown, JSON
+	textContentSchema := validators.Object(map[string]interface{}{
+		"type": validators.String().Pattern("^text$").
+			Example("text").
+			Required(),
+		"text": validators.String().Min(1).Max(5000).
+			Example("Your order has been shipped and is on its way!").
+			Required(),
+		"truncate_at": validators.Number().Min(10).Max(500).
+			Example(160).
+			Optional(),
+	}).Example(map[string]interface{}{
+		"type":        "text",
+		"text":        "Your order has been shipped and is on its way!",
+		"truncate_at": 160,
+	}).Required()
+
+	richTextContentSchema := validators.Object(map[string]interface{}{
+		"type": validators.String().Pattern("^rich_text$").
+			Example("rich_text").
+			Required(),
+		"title": validators.String().Min(1).Max(200).
+			Example("Order Update").
+			Required(),
+		"body": validators.String().Min(1).Max(5000).
+			Example("Your order #12345 has been **shipped** and will arrive in 2-3 business days.").
+			Required(),
+		"action_buttons": validators.Array(validators.Object(map[string]interface{}{
+			"text": validators.String().Required(),
+			"url":  validators.String().Required(),
+		})).
+			Example([]interface{}{
+				map[string]interface{}{
+					"text": "Track Package",
+					"url":  "https://example.com/track/12345",
+				},
+			}).
+			Optional(),
+	}).Example(map[string]interface{}{
+		"type":  "rich_text",
+		"title": "Order Update",
+		"body":  "Your order #12345 has been **shipped** and will arrive in 2-3 business days.",
+		"action_buttons": []interface{}{
+			map[string]interface{}{
+				"text": "Track Package",
+				"url":  "https://example.com/track/12345",
+			},
+		},
+	}).Required()
+
+	htmlContentSchema := validators.Object(map[string]interface{}{
+		"type": validators.String().Pattern("^html$").
+			Example("html").
+			Required(),
+		"html": validators.String().Min(1).Max(10000).
+			Example("<h1>Order Shipped!</h1><p>Your order <strong>#12345</strong> is on its way.</p>").
+			Required(),
+		"css_styles": validators.String().Max(2000).
+			Example("h1 { color: #2ecc71; } p { font-family: Arial, sans-serif; }").
+			Optional(),
+	}).Example(map[string]interface{}{
+		"type":       "html",
+		"html":       "<h1>Order Shipped!</h1><p>Your order <strong>#12345</strong> is on its way.</p>",
+		"css_styles": "h1 { color: #2ecc71; } p { font-family: Arial, sans-serif; }",
+	}).Required()
+
+	markdownContentSchema := validators.Object(map[string]interface{}{
+		"type": validators.String().Pattern("^markdown$").
+			Example("markdown").
+			Required(),
+		"markdown": validators.String().Min(1).Max(10000).
+			Example("# Order Shipped!\n\nYour order **#12345** is on its way and will arrive in **2-3 business days**.").
+			Required(),
+		"render_options": validators.Object(map[string]interface{}{
+			"allow_html":  validators.Bool().Optional(),
+			"auto_links":  validators.Bool().Optional(),
+			"line_breaks": validators.Bool().Optional(),
+		}).Optional(),
+	}).Example(map[string]interface{}{
+		"type":     "markdown",
+		"markdown": "# Order Shipped!\n\nYour order **#12345** is on its way and will arrive in **2-3 business days**.",
+		"render_options": map[string]interface{}{
+			"allow_html":  false,
+			"auto_links":  true,
+			"line_breaks": true,
+		},
+	}).Required()
+
+	jsonContentSchema := validators.Object(map[string]interface{}{
+		"type": validators.String().Pattern("^json$").
+			Example("json").
+			Required(),
+		"data": validators.Object(map[string]interface{}{}).
+			Example(map[string]interface{}{
+				"event":     "order_shipped",
+				"order_id":  "12345",
+				"tracking":  "1Z999AA1234567890",
+				"estimated": "2024-01-20",
+			}).
+			Required(),
+		"schema_version": validators.String().
+			Example("1.0").
+			Optional(),
+	}).Example(map[string]interface{}{
+		"type": "json",
+		"data": map[string]interface{}{
+			"event":     "order_shipped",
+			"order_id":  "12345",
+			"tracking":  "1Z999AA1234567890",
+			"estimated": "2024-01-20",
+		},
+		"schema_version": "1.0",
+	}).Required()
+
+	// OneOf notification content schema
+	notificationContentSchema := validators.OneOf(
+		textContentSchema,
+		richTextContentSchema,
+		htmlContentSchema,
+		markdownContentSchema,
+		jsonContentSchema,
+	).Required()
+
+	// Delivery options OneOf - immediate, scheduled, recurring, conditional
+	immediateDeliverySchema := validators.Object(map[string]interface{}{
+		"method": validators.String().Pattern("^immediate$").
+			Example("immediate").
+			Required(),
+		"priority": validators.String().
+			Examples(map[string]validators.ExampleObject{
+				"low": {
+					Summary:     "Low priority",
+					Description: "Standard delivery, may be queued with other messages",
+					Value:       "low",
+				},
+				"normal": {
+					Summary:     "Normal priority",
+					Description: "Standard priority delivery",
+					Value:       "normal",
+				},
+				"high": {
+					Summary:     "High priority",
+					Description: "Prioritized delivery with faster processing",
+					Value:       "high",
+				},
+				"urgent": {
+					Summary:     "Urgent priority",
+					Description: "Critical messages requiring immediate delivery",
+					Value:       "urgent",
+				},
+			}).
+			Optional().Default("normal"),
+	}).Example(map[string]interface{}{
+		"method":   "immediate",
+		"priority": "normal",
+	}).Required()
+
+	scheduledDeliverySchema := validators.Object(map[string]interface{}{
+		"method": validators.String().Pattern("^scheduled$").
+			Example("scheduled").
+			Required(),
+		"send_at": validators.String().
+			Example("2024-01-20T10:30:00Z").
+			Required(),
+		"timezone": validators.String().
+			Examples(map[string]validators.ExampleObject{
+				"utc": {
+					Summary:     "UTC timezone",
+					Description: "Coordinated Universal Time",
+					Value:       "UTC",
+				},
+				"est": {
+					Summary:     "Eastern Standard Time",
+					Description: "US Eastern timezone",
+					Value:       "America/New_York",
+				},
+				"pst": {
+					Summary:     "Pacific Standard Time",
+					Description: "US Pacific timezone",
+					Value:       "America/Los_Angeles",
+				},
+			}).
+			Optional().Default("UTC"),
+		"fallback_immediate": validators.Bool().
+			Example(true).
+			Optional().Default(false),
+	}).Example(map[string]interface{}{
+		"method":             "scheduled",
+		"send_at":            "2024-01-20T10:30:00Z",
+		"timezone":           "America/New_York",
+		"fallback_immediate": true,
+	}).Required()
+
+	recurringDeliverySchema := validators.Object(map[string]interface{}{
+		"method": validators.String().Pattern("^recurring$").
+			Example("recurring").
+			Required(),
+		"cron_expression": validators.String().
+			Examples(map[string]validators.ExampleObject{
+				"daily": {
+					Summary:     "Daily at 9 AM",
+					Description: "Send notification every day at 9:00 AM",
+					Value:       "0 9 * * *",
+				},
+				"weekly": {
+					Summary:     "Weekly on Monday",
+					Description: "Send notification every Monday at 9:00 AM",
+					Value:       "0 9 * * 1",
+				},
+				"monthly": {
+					Summary:     "Monthly on 1st",
+					Description: "Send notification on the 1st of every month",
+					Value:       "0 9 1 * *",
+				},
+			}).
+			Required(),
+		"start_date": validators.String().
+			Example("2024-01-01T00:00:00Z").
+			Required(),
+		"end_date": validators.String().
+			Example("2024-12-31T23:59:59Z").
+			Optional(),
+		"max_occurrences": validators.Number().Min(1).
+			Example(12).
+			Optional(),
+	}).Example(map[string]interface{}{
+		"method":          "recurring",
+		"cron_expression": "0 9 * * 1",
+		"start_date":      "2024-01-01T00:00:00Z",
+		"end_date":        "2024-12-31T23:59:59Z",
+		"max_occurrences": 52,
+	}).Required()
+
+	conditionalDeliverySchema := validators.Object(map[string]interface{}{
+		"method": validators.String().Pattern("^conditional$").
+			Example("conditional").
+			Required(),
+		"trigger_event": validators.String().
+			Examples(map[string]validators.ExampleObject{
+				"user_action": {
+					Summary:     "User action trigger",
+					Description: "Send when user performs specific action",
+					Value:       "user_login",
+				},
+				"system_event": {
+					Summary:     "System event trigger",
+					Description: "Send when system event occurs",
+					Value:       "order_status_change",
+				},
+				"time_based": {
+					Summary:     "Time-based trigger",
+					Description: "Send after specific time delay",
+					Value:       "account_inactive_7days",
+				},
+			}).
+			Required(),
+		"conditions": validators.Array(validators.Object(map[string]interface{}{
+			"field":    validators.String().Required(),
+			"operator": validators.String().Required(),
+			"value":    validators.String().Required(),
+		})).
+			Example([]interface{}{
+				map[string]interface{}{
+					"field":    "user.last_login",
+					"operator": "older_than",
+					"value":    "7d",
+				},
+			}).
+			Required(),
+		"max_delay": validators.String().
+			Example("24h").
+			Optional(),
+	}).Example(map[string]interface{}{
+		"method":        "conditional",
+		"trigger_event": "account_inactive_7days",
+		"conditions": []interface{}{
+			map[string]interface{}{
+				"field":    "user.last_login",
+				"operator": "older_than",
+				"value":    "7d",
+			},
+		},
+		"max_delay": "24h",
+	}).Required()
+
+	// OneOf delivery options schema
+	deliveryOptionsSchema := validators.OneOf(
+		immediateDeliverySchema,
+		scheduledDeliverySchema,
+		recurringDeliverySchema,
+		conditionalDeliverySchema,
+	).Required()
+
+	// Enhanced notification creation with OneOf content and delivery
+	sendAdvancedNotificationBodySchema := validators.Object(map[string]interface{}{
+		"user_id": validators.String().Min(1).Pattern("^usr_[a-zA-Z0-9]+$").
+			Example("usr_12345").
+			Required(),
+		"type": validators.String().
+			Examples(map[string]validators.ExampleObject{
+				"order": {
+					Summary:     "Order notification",
+					Description: "Notifications related to order updates",
+					Value:       "order_update",
+				},
+				"promo": {
+					Summary:     "Promotional notification",
+					Description: "Marketing and promotional messages",
+					Value:       "promotion",
+				},
+				"system": {
+					Summary:     "System notification",
+					Description: "System alerts and maintenance notices",
+					Value:       "system_alert",
+				},
+			}).
+			Required(),
+		"channel": validators.String().
+			Examples(map[string]validators.ExampleObject{
+				"email": {
+					Summary:     "Email notification",
+					Description: "Send via email channel",
+					Value:       "email",
+				},
+				"sms": {
+					Summary:     "SMS notification",
+					Description: "Send via SMS/text message",
+					Value:       "sms",
+				},
+				"push": {
+					Summary:     "Push notification",
+					Description: "Send as mobile push notification",
+					Value:       "push",
+				},
+				"webhook": {
+					Summary:     "Webhook notification",
+					Description: "Send via webhook callback",
+					Value:       "webhook",
+				},
+			}).
+			Required(),
+		"content":          notificationContentSchema,
+		"delivery_options": deliveryOptionsSchema,
+		"metadata": validators.Object(map[string]interface{}{
+			"campaign_id": validators.String().Optional(),
+			"ab_test_id":  validators.String().Optional(),
+			"source":      validators.String().Optional(),
+		}).
+			Example(map[string]interface{}{
+				"campaign_id": "camp_winter2024",
+				"ab_test_id":  "test_subject_lines_v2",
+				"source":      "mobile_app",
+			}).
+			Optional(),
+	}).Example(map[string]interface{}{
+		"user_id": "usr_12345",
+		"type":    "order_update",
+		"channel": "email",
+		"content": map[string]interface{}{
+			"type":  "rich_text",
+			"title": "Order Shipped!",
+			"body":  "Your order **#12345** has been shipped and will arrive in 2-3 business days.",
+			"action_buttons": []interface{}{
+				map[string]interface{}{
+					"text": "Track Package",
+					"url":  "https://example.com/track/12345",
+				},
+			},
+		},
+		"delivery_options": map[string]interface{}{
+			"method":   "immediate",
+			"priority": "normal",
+		},
+		"metadata": map[string]interface{}{
+			"campaign_id": "camp_winter2024",
+			"source":      "web_app",
+		},
+	}).Required()
+
 	// Define complex schemas with nested objects and arrays
 	sendNotificationBodySchema := validators.Object(map[string]interface{}{
 		"user_id":  validators.String().Min(1).Pattern("^usr_[a-zA-Z0-9]+$").Required(),
@@ -797,6 +1191,38 @@ func main() {
 		}).Required()).
 		Handler(operations.CreateValidatedHandler(listTemplatesHandler, nil, listTemplatesQuerySchema, nil, nil))
 
+	// New operation showcasing OneOf for content types and delivery options
+	sendAdvancedNotificationOp := operations.NewSimple().
+		POST("/notifications/advanced").
+		Summary("Send advanced notification with flexible content and delivery").
+		Description("Sends a notification with OneOf support for multiple content types (text, rich text, HTML, markdown, JSON) "+
+			"and delivery options (immediate, scheduled, recurring, conditional). This endpoint demonstrates how OneOf schemas "+
+			"enable flexible API design for notification services where content format and delivery method can vary significantly.").
+		Tags("notifications", "messaging", "oneof-example", "content", "delivery").
+		WithBody(sendAdvancedNotificationBodySchema).
+		WithResponse(validators.Object(map[string]interface{}{
+			"id":         validators.String().Min(1).Required(),
+			"user_id":    validators.String().Min(1).Required(),
+			"type":       validators.String().Required(),
+			"channel":    validators.String().Required(),
+			"title":      validators.String().Min(1).Required(),
+			"message":    validators.String().Min(1).Required(),
+			"data":       validators.Object(map[string]interface{}{}).Optional(),
+			"priority":   validators.String().Required(),
+			"status":     validators.String().Required(),
+			"read_at":    validators.String().Optional(),
+			"sent_at":    validators.String().Optional(),
+			"created_at": validators.String().Required(),
+			"updated_at": validators.String().Required(),
+		}).Required()).
+		Handler(operations.CreateValidatedHandler(
+			sendNotificationHandler, // Reuse existing handler for demo
+			nil,
+			nil,
+			sendAdvancedNotificationBodySchema,
+			nil,
+		))
+
 	// Register all operations
 	router.Register(sendNotificationOp)
 	router.Register(sendBulkOp)
@@ -810,6 +1236,7 @@ func main() {
 	router.Register(updateTemplateOp)
 	router.Register(deleteTemplateOp)
 	router.Register(listTemplatesOp)
+	router.Register(sendAdvancedNotificationOp) // OneOf showcase operation
 
 	// Health check
 	engine.GET("/health", func(c *gin.Context) {

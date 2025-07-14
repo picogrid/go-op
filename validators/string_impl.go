@@ -11,16 +11,27 @@ import (
 // Core string schema struct (unexported)
 // This contains all the validation configuration and is wrapped by state-specific types
 type stringSchema struct {
-	minLength    int
-	maxLength    int
-	required     bool
-	pattern      *regexp.Regexp
-	emailFormat  bool
-	urlFormat    bool
-	customFunc   func(string) error
-	optional     bool
-	defaultValue *string
-	customError  map[string]string
+	minLength     int
+	maxLength     int
+	required      bool
+	pattern       *regexp.Regexp
+	emailFormat   bool
+	urlFormat     bool
+	customFunc    func(string) error
+	optional      bool
+	defaultValue  *string
+	customError   map[string]string
+	example       interface{}
+	examples      map[string]ExampleObject
+	externalValue string
+}
+
+// ExampleObject represents an example value with metadata
+type ExampleObject struct {
+	Summary       string      `json:"summary,omitempty"`
+	Description   string      `json:"description,omitempty"`
+	Value         interface{} `json:"value,omitempty"`
+	ExternalValue string      `json:"externalValue,omitempty"`
 }
 
 // State wrapper types for compile-time safety
@@ -358,6 +369,54 @@ func (s *stringSchema) validate(data interface{}) error {
 	}
 
 	return nil
+}
+
+// Example methods for StringBuilder
+func (s *stringSchema) Example(value interface{}) StringBuilder {
+	s.example = value
+	return s
+}
+
+func (s *stringSchema) Examples(examples map[string]ExampleObject) StringBuilder {
+	s.examples = examples
+	return s
+}
+
+func (s *stringSchema) ExampleFromFile(path string) StringBuilder {
+	s.externalValue = path
+	return s
+}
+
+// Example methods for RequiredStringBuilder
+func (r *requiredStringSchema) Example(value interface{}) RequiredStringBuilder {
+	r.example = value
+	return r
+}
+
+func (r *requiredStringSchema) Examples(examples map[string]ExampleObject) RequiredStringBuilder {
+	r.examples = examples
+	return r
+}
+
+func (r *requiredStringSchema) ExampleFromFile(path string) RequiredStringBuilder {
+	r.externalValue = path
+	return r
+}
+
+// Example methods for OptionalStringBuilder
+func (o *optionalStringSchema) Example(value interface{}) OptionalStringBuilder {
+	o.example = value
+	return o
+}
+
+func (o *optionalStringSchema) Examples(examples map[string]ExampleObject) OptionalStringBuilder {
+	o.examples = examples
+	return o
+}
+
+func (o *optionalStringSchema) ExampleFromFile(path string) OptionalStringBuilder {
+	o.externalValue = path
+	return o
 }
 
 // Helper methods (unexported)

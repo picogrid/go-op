@@ -12,6 +12,11 @@ type NumberBuilder interface {
 	Negative() NumberBuilder
 	Custom(fn func(float64) error) NumberBuilder
 
+	// Example methods for OpenAPI documentation
+	Example(value interface{}) NumberBuilder
+	Examples(examples map[string]ExampleObject) NumberBuilder
+	ExampleFromFile(path string) NumberBuilder
+
 	// State transition methods - these change the type to prevent invalid chaining
 	Required() RequiredNumberBuilder // Transitions to required state
 	Optional() OptionalNumberBuilder // Transitions to optional state
@@ -38,6 +43,11 @@ type RequiredNumberBuilder interface {
 	Positive() RequiredNumberBuilder
 	Negative() RequiredNumberBuilder
 	Custom(fn func(float64) error) RequiredNumberBuilder
+
+	// Example methods for OpenAPI documentation
+	Example(value interface{}) RequiredNumberBuilder
+	Examples(examples map[string]ExampleObject) RequiredNumberBuilder
+	ExampleFromFile(path string) RequiredNumberBuilder
 
 	// Error message configuration methods
 	WithMessage(validationType, message string) RequiredNumberBuilder
@@ -67,6 +77,11 @@ type OptionalNumberBuilder interface {
 	Negative() OptionalNumberBuilder
 	Custom(fn func(float64) error) OptionalNumberBuilder
 	Default(value float64) OptionalNumberBuilder // Only available on optional builders!
+
+	// Example methods for OpenAPI documentation
+	Example(value interface{}) OptionalNumberBuilder
+	Examples(examples map[string]ExampleObject) OptionalNumberBuilder
+	ExampleFromFile(path string) OptionalNumberBuilder
 
 	// Error message configuration methods
 	WithMessage(validationType, message string) OptionalNumberBuilder

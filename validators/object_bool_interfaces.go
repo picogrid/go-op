@@ -9,6 +9,11 @@ type ObjectBuilder interface {
 	Partial() ObjectBuilder // All keys become optional
 	Custom(fn func(map[string]interface{}) error) ObjectBuilder
 
+	// Example methods for OpenAPI documentation
+	Example(value interface{}) ObjectBuilder
+	Examples(examples map[string]ExampleObject) ObjectBuilder
+	ExampleFromFile(path string) ObjectBuilder
+
 	// State transition methods - these change the type to prevent invalid chaining
 	Required() RequiredObjectBuilder // Transitions to required state
 	Optional() OptionalObjectBuilder // Transitions to optional state
@@ -27,6 +32,11 @@ type RequiredObjectBuilder interface {
 	Strict() RequiredObjectBuilder
 	Partial() RequiredObjectBuilder
 	Custom(fn func(map[string]interface{}) error) RequiredObjectBuilder
+
+	// Example methods for OpenAPI documentation
+	Example(value interface{}) RequiredObjectBuilder
+	Examples(examples map[string]ExampleObject) RequiredObjectBuilder
+	ExampleFromFile(path string) RequiredObjectBuilder
 
 	// Error message configuration methods
 	WithMessage(validationType, message string) RequiredObjectBuilder
@@ -49,6 +59,11 @@ type OptionalObjectBuilder interface {
 	Custom(fn func(map[string]interface{}) error) OptionalObjectBuilder
 	Default(value map[string]interface{}) OptionalObjectBuilder // Only available on optional builders!
 
+	// Example methods for OpenAPI documentation
+	Example(value interface{}) OptionalObjectBuilder
+	Examples(examples map[string]ExampleObject) OptionalObjectBuilder
+	ExampleFromFile(path string) OptionalObjectBuilder
+
 	// Error message configuration methods
 	WithMessage(validationType, message string) OptionalObjectBuilder
 
@@ -62,6 +77,11 @@ type OptionalObjectBuilder interface {
 type BoolBuilder interface {
 	// Configuration methods - these return BoolBuilder to allow chaining
 	Custom(fn func(bool) error) BoolBuilder
+
+	// Example methods for OpenAPI documentation
+	Example(value interface{}) BoolBuilder
+	Examples(examples map[string]ExampleObject) BoolBuilder
+	ExampleFromFile(path string) BoolBuilder
 
 	// State transition methods - these change the type to prevent invalid chaining
 	Required() RequiredBoolBuilder // Transitions to required state
@@ -79,6 +99,11 @@ type BoolBuilder interface {
 type RequiredBoolBuilder interface {
 	// Configuration methods - these return RequiredBoolBuilder to maintain state
 	Custom(fn func(bool) error) RequiredBoolBuilder
+
+	// Example methods for OpenAPI documentation
+	Example(value interface{}) RequiredBoolBuilder
+	Examples(examples map[string]ExampleObject) RequiredBoolBuilder
+	ExampleFromFile(path string) RequiredBoolBuilder
 
 	// Error message configuration methods
 	WithMessage(validationType, message string) RequiredBoolBuilder
@@ -98,6 +123,11 @@ type OptionalBoolBuilder interface {
 	// Configuration methods - these return OptionalBoolBuilder to maintain state
 	Custom(fn func(bool) error) OptionalBoolBuilder
 	Default(value bool) OptionalBoolBuilder // Only available on optional builders!
+
+	// Example methods for OpenAPI documentation
+	Example(value interface{}) OptionalBoolBuilder
+	Examples(examples map[string]ExampleObject) OptionalBoolBuilder
+	ExampleFromFile(path string) OptionalBoolBuilder
 
 	// Error message configuration methods
 	WithMessage(validationType, message string) OptionalBoolBuilder

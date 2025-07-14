@@ -38,6 +38,11 @@ func (s *stringSchema) ToOpenAPISchema() *goop.OpenAPISchema {
 		schema.Default = *s.defaultValue
 	}
 
+	// Add example information
+	if s.example != nil {
+		schema.Example = s.example
+	}
+
 	return schema
 }
 
@@ -128,6 +133,11 @@ func (n *numberSchema) ToOpenAPISchema() *goop.OpenAPISchema {
 		schema.Default = *n.defaultValue
 	}
 
+	// Add example information
+	if n.example != nil {
+		schema.Example = n.example
+	}
+
 	return schema
 }
 
@@ -215,6 +225,11 @@ func (a *arraySchema) ToOpenAPISchema() *goop.OpenAPISchema {
 		schema.Default = a.defaultValue
 	}
 
+	// Add example information
+	if a.example != nil {
+		schema.Example = a.example
+	}
+
 	return schema
 }
 
@@ -290,6 +305,11 @@ func (obj *objectSchema) ToOpenAPISchema() *goop.OpenAPISchema {
 		}
 	}
 
+	// Add example information
+	if obj.example != nil {
+		schema.Example = obj.example
+	}
+
 	return schema
 }
 
@@ -337,6 +357,11 @@ func (b *boolSchema) ToOpenAPISchema() *goop.OpenAPISchema {
 	// Add default value for optional schemas
 	if b.defaultValue != nil {
 		schema.Default = *b.defaultValue
+	}
+
+	// Add example information
+	if b.example != nil {
+		schema.Example = b.example
 	}
 
 	return schema

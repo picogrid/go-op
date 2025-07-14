@@ -42,18 +42,35 @@ type OperationDefinition struct {
 
 // SchemaDefinition represents a discovered schema definition
 type SchemaDefinition struct {
-	Type        string
-	Properties  map[string]*SchemaDefinition
-	Items       *SchemaDefinition
-	Required    []string
-	MinLength   *int
-	MaxLength   *int
-	Minimum     *float64
-	Maximum     *float64
-	Pattern     string
-	Format      string
-	Default     interface{}
-	Description string
+	Type          string
+	Properties    map[string]*SchemaDefinition
+	Items         *SchemaDefinition
+	Required      []string
+	MinLength     *int
+	MaxLength     *int
+	Minimum       *float64
+	Maximum       *float64
+	Pattern       string
+	Format        string
+	Default       interface{}
+	Description   string
+	Example       interface{}
+	Examples      map[string]ExampleObject
+	ExternalValue string
+
+	// Schema composition fields for OpenAPI 3.1
+	OneOf []*SchemaDefinition
+	AllOf []*SchemaDefinition
+	AnyOf []*SchemaDefinition
+	Not   *SchemaDefinition
+}
+
+// ExampleObject represents an OpenAPI example object
+type ExampleObject struct {
+	Summary       string      `json:"summary,omitempty" yaml:"summary,omitempty"`
+	Description   string      `json:"description,omitempty" yaml:"description,omitempty"`
+	Value         interface{} `json:"value,omitempty" yaml:"value,omitempty"`
+	ExternalValue string      `json:"externalValue,omitempty" yaml:"externalValue,omitempty"`
 }
 
 // New creates a new OpenAPI generator
@@ -287,6 +304,7 @@ func (g *Generator) convertSchemaToOpenAPI(schema *SchemaDefinition) *goop.OpenA
 		Format:      schema.Format,
 		Pattern:     schema.Pattern,
 		Default:     schema.Default,
+		Example:     schema.Example,
 	}
 
 	// Add constraints
@@ -317,6 +335,29 @@ func (g *Generator) convertSchemaToOpenAPI(schema *SchemaDefinition) *goop.OpenA
 	// Handle array items
 	if schema.Type == "array" && schema.Items != nil {
 		openAPISchema.Items = g.convertSchemaToOpenAPI(schema.Items)
+	}
+
+	// Handle schema composition (OpenAPI 3.1)
+	if len(schema.OneOf) > 0 {
+		openAPISchema.OneOf = make([]*goop.OpenAPISchema, len(schema.OneOf))
+		for i, childSchema := range schema.OneOf {
+			openAPISchema.OneOf[i] = g.convertSchemaToOpenAPI(childSchema)
+		}
+	}
+	if len(schema.AllOf) > 0 {
+		openAPISchema.AllOf = make([]*goop.OpenAPISchema, len(schema.AllOf))
+		for i, childSchema := range schema.AllOf {
+			openAPISchema.AllOf[i] = g.convertSchemaToOpenAPI(childSchema)
+		}
+	}
+	if len(schema.AnyOf) > 0 {
+		openAPISchema.AnyOf = make([]*goop.OpenAPISchema, len(schema.AnyOf))
+		for i, childSchema := range schema.AnyOf {
+			openAPISchema.AnyOf[i] = g.convertSchemaToOpenAPI(childSchema)
+		}
+	}
+	if schema.Not != nil {
+		openAPISchema.Not = g.convertSchemaToOpenAPI(schema.Not)
 	}
 
 	return openAPISchema

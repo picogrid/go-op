@@ -152,7 +152,10 @@ type OpenAPILink struct {
 
 // OpenAPIMediaType represents a media type in OpenAPI spec
 type OpenAPIMediaType struct {
-	Schema *goop.OpenAPISchema `json:"schema,omitempty" yaml:"schema,omitempty"`
+	Schema   *goop.OpenAPISchema        `json:"schema,omitempty" yaml:"schema,omitempty"`
+	Example  interface{}                `json:"example,omitempty" yaml:"example,omitempty"`
+	Examples map[string]OpenAPIExample  `json:"examples,omitempty" yaml:"examples,omitempty"`
+	Encoding map[string]OpenAPIEncoding `json:"encoding,omitempty" yaml:"encoding,omitempty"`
 }
 
 // OpenAPIComponents represents the components section of OpenAPI spec
@@ -172,6 +175,15 @@ type OpenAPIExample struct {
 	Description   string      `json:"description,omitempty" yaml:"description,omitempty"`
 	Value         interface{} `json:"value,omitempty" yaml:"value,omitempty"`
 	ExternalValue string      `json:"externalValue,omitempty" yaml:"externalValue,omitempty"`
+}
+
+// OpenAPIEncoding represents encoding information for OpenAPI spec
+type OpenAPIEncoding struct {
+	ContentType   string                   `json:"contentType,omitempty" yaml:"contentType,omitempty"`
+	Headers       map[string]OpenAPIHeader `json:"headers,omitempty" yaml:"headers,omitempty"`
+	Style         string                   `json:"style,omitempty" yaml:"style,omitempty"`
+	Explode       *bool                    `json:"explode,omitempty" yaml:"explode,omitempty"`
+	AllowReserved *bool                    `json:"allowReserved,omitempty" yaml:"allowReserved,omitempty"`
 }
 
 // OpenAPIHeader represents a header in OpenAPI spec
@@ -342,12 +354,19 @@ func (g *OpenAPIGenerator) Process(info OperationInfo) error {
 
 	// Add request body
 	if info.Operation.BodySpec != nil {
+		mediaType := OpenAPIMediaType{
+			Schema: info.Operation.BodySpec,
+		}
+
+		// Add example from schema if available
+		if info.Operation.BodySpec.Example != nil {
+			mediaType.Example = info.Operation.BodySpec.Example
+		}
+
 		operation.RequestBody = &OpenAPIRequestBody{
 			Required: info.BodyInfo != nil && info.BodyInfo.Required,
 			Content: map[string]OpenAPIMediaType{
-				"application/json": {
-					Schema: info.Operation.BodySpec,
-				},
+				"application/json": mediaType,
 			},
 		}
 	}
@@ -359,10 +378,17 @@ func (g *OpenAPIGenerator) Process(info OperationInfo) error {
 	}
 
 	if info.Operation.ResponseSpec != nil {
+		mediaType := OpenAPIMediaType{
+			Schema: info.Operation.ResponseSpec,
+		}
+
+		// Add example from schema if available
+		if info.Operation.ResponseSpec.Example != nil {
+			mediaType.Example = info.Operation.ResponseSpec.Example
+		}
+
 		response.Content = map[string]OpenAPIMediaType{
-			"application/json": {
-				Schema: info.Operation.ResponseSpec,
-			},
+			"application/json": mediaType,
 		}
 	}
 

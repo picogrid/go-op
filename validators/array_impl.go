@@ -19,6 +19,9 @@ type arraySchema struct {
 	optional      bool
 	defaultValue  []interface{}
 	customError   map[string]string
+	example       interface{}
+	examples      map[string]ExampleObject
+	externalValue string
 }
 
 // State wrapper types for compile-time safety
@@ -358,6 +361,54 @@ func (a *arraySchema) validateElement(item interface{}) error {
 
 	// If we can't find a way to validate, that's an error in the schema definition
 	return fmt.Errorf("element schema does not implement validation interface: %T", a.elementSchema)
+}
+
+// Example methods for ArrayBuilder
+func (a *arraySchema) Example(value interface{}) ArrayBuilder {
+	a.example = value
+	return a
+}
+
+func (a *arraySchema) Examples(examples map[string]ExampleObject) ArrayBuilder {
+	a.examples = examples
+	return a
+}
+
+func (a *arraySchema) ExampleFromFile(path string) ArrayBuilder {
+	a.externalValue = path
+	return a
+}
+
+// Example methods for RequiredArrayBuilder
+func (r *requiredArraySchema) Example(value interface{}) RequiredArrayBuilder {
+	r.example = value
+	return r
+}
+
+func (r *requiredArraySchema) Examples(examples map[string]ExampleObject) RequiredArrayBuilder {
+	r.examples = examples
+	return r
+}
+
+func (r *requiredArraySchema) ExampleFromFile(path string) RequiredArrayBuilder {
+	r.externalValue = path
+	return r
+}
+
+// Example methods for OptionalArrayBuilder
+func (o *optionalArraySchema) Example(value interface{}) OptionalArrayBuilder {
+	o.example = value
+	return o
+}
+
+func (o *optionalArraySchema) Examples(examples map[string]ExampleObject) OptionalArrayBuilder {
+	o.examples = examples
+	return o
+}
+
+func (o *optionalArraySchema) ExampleFromFile(path string) OptionalArrayBuilder {
+	o.externalValue = path
+	return o
 }
 
 // Helper methods (unexported)
