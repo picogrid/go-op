@@ -600,3 +600,320 @@ func TestOpenAPIHelperFunctions(t *testing.T) {
 		}
 	})
 }
+
+// TestOpenAPIFixedFields tests the new OpenAPI 3.1 fixed fields
+func TestOpenAPIFixedFields(t *testing.T) {
+	t.Run("Numeric validation fields", func(t *testing.T) {
+		schema := &OpenAPISchema{
+			Type:             "number",
+			MultipleOf:       floatPtr(2.5),
+			ExclusiveMinimum: floatPtr(0.0),
+			ExclusiveMaximum: floatPtr(100.0),
+		}
+
+		if *schema.MultipleOf != 2.5 {
+			t.Errorf("Expected MultipleOf 2.5, got %f", *schema.MultipleOf)
+		}
+		if *schema.ExclusiveMinimum != 0.0 {
+			t.Errorf("Expected ExclusiveMinimum 0.0, got %f", *schema.ExclusiveMinimum)
+		}
+		if *schema.ExclusiveMaximum != 100.0 {
+			t.Errorf("Expected ExclusiveMaximum 100.0, got %f", *schema.ExclusiveMaximum)
+		}
+
+		// Test JSON serialization
+		jsonData, err := json.Marshal(schema)
+		if err != nil {
+			t.Fatalf("Failed to marshal schema with numeric fields: %v", err)
+		}
+
+		var unmarshaled OpenAPISchema
+		if err := json.Unmarshal(jsonData, &unmarshaled); err != nil {
+			t.Fatalf("Failed to unmarshal schema with numeric fields: %v", err)
+		}
+
+		if *unmarshaled.MultipleOf != 2.5 {
+			t.Errorf("Expected unmarshaled MultipleOf 2.5, got %f", *unmarshaled.MultipleOf)
+		}
+	})
+
+	t.Run("Array validation fields", func(t *testing.T) {
+		schema := &OpenAPISchema{
+			Type:        "array",
+			MaxItems:    intPtr(10),
+			MinItems:    intPtr(1),
+			UniqueItems: boolPtr(true),
+			Items: &OpenAPISchema{
+				Type: "string",
+			},
+		}
+
+		if *schema.MaxItems != 10 {
+			t.Errorf("Expected MaxItems 10, got %d", *schema.MaxItems)
+		}
+		if *schema.MinItems != 1 {
+			t.Errorf("Expected MinItems 1, got %d", *schema.MinItems)
+		}
+		if !*schema.UniqueItems {
+			t.Error("Expected UniqueItems to be true")
+		}
+
+		// Test JSON serialization
+		jsonData, err := json.Marshal(schema)
+		if err != nil {
+			t.Fatalf("Failed to marshal schema with array fields: %v", err)
+		}
+
+		var unmarshaled OpenAPISchema
+		if err := json.Unmarshal(jsonData, &unmarshaled); err != nil {
+			t.Fatalf("Failed to unmarshal schema with array fields: %v", err)
+		}
+
+		if *unmarshaled.UniqueItems != true {
+			t.Error("Expected unmarshaled UniqueItems to be true")
+		}
+	})
+
+	t.Run("Object validation fields", func(t *testing.T) {
+		schema := &OpenAPISchema{
+			Type:          "object",
+			MaxProperties: intPtr(5),
+			MinProperties: intPtr(1),
+			AdditionalProperties: &OpenAPISchemaOrBool{
+				Bool: boolPtr(false),
+			},
+		}
+
+		if *schema.MaxProperties != 5 {
+			t.Errorf("Expected MaxProperties 5, got %d", *schema.MaxProperties)
+		}
+		if *schema.MinProperties != 1 {
+			t.Errorf("Expected MinProperties 1, got %d", *schema.MinProperties)
+		}
+		if *schema.AdditionalProperties.Bool != false {
+			t.Error("Expected AdditionalProperties to be false")
+		}
+
+		// Test JSON serialization
+		jsonData, err := json.Marshal(schema)
+		if err != nil {
+			t.Fatalf("Failed to marshal schema with object fields: %v", err)
+		}
+
+		var unmarshaled OpenAPISchema
+		if err := json.Unmarshal(jsonData, &unmarshaled); err != nil {
+			t.Fatalf("Failed to unmarshal schema with object fields: %v", err)
+		}
+
+		if *unmarshaled.AdditionalProperties.Bool != false {
+			t.Error("Expected unmarshaled AdditionalProperties to be false")
+		}
+	})
+
+	t.Run("Schema composition fields", func(t *testing.T) {
+		stringSchema := &OpenAPISchema{Type: "string"}
+		numberSchema := &OpenAPISchema{Type: "number"}
+
+		schema := &OpenAPISchema{
+			AllOf: []*OpenAPISchema{stringSchema, numberSchema},
+			OneOf: []*OpenAPISchema{stringSchema, numberSchema},
+			AnyOf: []*OpenAPISchema{stringSchema, numberSchema},
+			Not:   stringSchema,
+		}
+
+		if len(schema.AllOf) != 2 {
+			t.Errorf("Expected AllOf length 2, got %d", len(schema.AllOf))
+		}
+		if len(schema.OneOf) != 2 {
+			t.Errorf("Expected OneOf length 2, got %d", len(schema.OneOf))
+		}
+		if len(schema.AnyOf) != 2 {
+			t.Errorf("Expected AnyOf length 2, got %d", len(schema.AnyOf))
+		}
+		if schema.Not != stringSchema {
+			t.Error("Expected Not to reference stringSchema")
+		}
+
+		// Test JSON serialization
+		jsonData, err := json.Marshal(schema)
+		if err != nil {
+			t.Fatalf("Failed to marshal schema with composition fields: %v", err)
+		}
+
+		var unmarshaled OpenAPISchema
+		if err := json.Unmarshal(jsonData, &unmarshaled); err != nil {
+			t.Fatalf("Failed to unmarshal schema with composition fields: %v", err)
+		}
+
+		if len(unmarshaled.AllOf) != 2 {
+			t.Errorf("Expected unmarshaled AllOf length 2, got %d", len(unmarshaled.AllOf))
+		}
+	})
+
+	t.Run("Metadata fields", func(t *testing.T) {
+		schema := &OpenAPISchema{
+			Type:       "string",
+			Title:      "User Email",
+			Const:      "admin@example.com",
+			ReadOnly:   boolPtr(true),
+			WriteOnly:  boolPtr(false),
+			Deprecated: boolPtr(true),
+		}
+
+		if schema.Title != "User Email" {
+			t.Errorf("Expected Title 'User Email', got '%s'", schema.Title)
+		}
+		if schema.Const != "admin@example.com" {
+			t.Errorf("Expected Const 'admin@example.com', got '%v'", schema.Const)
+		}
+		if !*schema.ReadOnly {
+			t.Error("Expected ReadOnly to be true")
+		}
+		if *schema.WriteOnly {
+			t.Error("Expected WriteOnly to be false")
+		}
+		if !*schema.Deprecated {
+			t.Error("Expected Deprecated to be true")
+		}
+
+		// Test JSON serialization
+		jsonData, err := json.Marshal(schema)
+		if err != nil {
+			t.Fatalf("Failed to marshal schema with metadata fields: %v", err)
+		}
+
+		var unmarshaled OpenAPISchema
+		if err := json.Unmarshal(jsonData, &unmarshaled); err != nil {
+			t.Fatalf("Failed to unmarshal schema with metadata fields: %v", err)
+		}
+
+		if unmarshaled.Title != "User Email" {
+			t.Errorf("Expected unmarshaled Title 'User Email', got '%s'", unmarshaled.Title)
+		}
+		if !*unmarshaled.ReadOnly {
+			t.Error("Expected unmarshaled ReadOnly to be true")
+		}
+	})
+
+	t.Run("AdditionalProperties with schema", func(t *testing.T) {
+		additionalSchema := &OpenAPISchema{
+			Type:    "string",
+			Pattern: "^[a-z]+$",
+		}
+
+		schema := &OpenAPISchema{
+			Type: "object",
+			AdditionalProperties: &OpenAPISchemaOrBool{
+				Schema: additionalSchema,
+			},
+		}
+
+		if schema.AdditionalProperties.Schema != additionalSchema {
+			t.Error("Expected AdditionalProperties to reference schema")
+		}
+
+		// Test JSON serialization
+		jsonData, err := json.Marshal(schema)
+		if err != nil {
+			t.Fatalf("Failed to marshal schema with additionalProperties schema: %v", err)
+		}
+
+		var unmarshaled OpenAPISchema
+		if err := json.Unmarshal(jsonData, &unmarshaled); err != nil {
+			t.Fatalf("Failed to unmarshal schema with additionalProperties schema: %v", err)
+		}
+
+		if unmarshaled.AdditionalProperties.Schema == nil {
+			t.Error("Expected unmarshaled AdditionalProperties to have schema")
+		}
+		if unmarshaled.AdditionalProperties.Schema.Type != "string" {
+			t.Error("Expected unmarshaled AdditionalProperties schema type to be string")
+		}
+	})
+}
+
+// TestOpenAPISchemaOrBool tests the OpenAPISchemaOrBool type
+func TestOpenAPISchemaOrBool(t *testing.T) {
+	t.Run("OpenAPISchemaOrBool with boolean", func(t *testing.T) {
+		schemaOrBool := &OpenAPISchemaOrBool{
+			Bool: boolPtr(true),
+		}
+
+		// Test JSON marshaling
+		jsonData, err := json.Marshal(schemaOrBool)
+		if err != nil {
+			t.Fatalf("Failed to marshal OpenAPISchemaOrBool with bool: %v", err)
+		}
+
+		expected := "true"
+		if string(jsonData) != expected {
+			t.Errorf("Expected JSON '%s', got '%s'", expected, string(jsonData))
+		}
+
+		// Test JSON unmarshaling
+		var unmarshaled OpenAPISchemaOrBool
+		if err := json.Unmarshal(jsonData, &unmarshaled); err != nil {
+			t.Fatalf("Failed to unmarshal OpenAPISchemaOrBool with bool: %v", err)
+		}
+
+		if unmarshaled.Bool == nil || !*unmarshaled.Bool {
+			t.Error("Expected unmarshaled Bool to be true")
+		}
+		if unmarshaled.Schema != nil {
+			t.Error("Expected unmarshaled Schema to be nil")
+		}
+	})
+
+	t.Run("OpenAPISchemaOrBool with schema", func(t *testing.T) {
+		schema := &OpenAPISchema{
+			Type:    "string",
+			Pattern: "^[a-z]+$",
+		}
+
+		schemaOrBool := &OpenAPISchemaOrBool{
+			Schema: schema,
+		}
+
+		// Test JSON marshaling
+		jsonData, err := json.Marshal(schemaOrBool)
+		if err != nil {
+			t.Fatalf("Failed to marshal OpenAPISchemaOrBool with schema: %v", err)
+		}
+
+		// Test JSON unmarshaling
+		var unmarshaled OpenAPISchemaOrBool
+		if err := json.Unmarshal(jsonData, &unmarshaled); err != nil {
+			t.Fatalf("Failed to unmarshal OpenAPISchemaOrBool with schema: %v", err)
+		}
+
+		if unmarshaled.Schema == nil {
+			t.Error("Expected unmarshaled Schema to be set")
+		}
+		if unmarshaled.Schema.Type != "string" {
+			t.Error("Expected unmarshaled Schema type to be string")
+		}
+		if unmarshaled.Bool != nil {
+			t.Error("Expected unmarshaled Bool to be nil")
+		}
+	})
+
+	t.Run("OpenAPISchemaOrBool with nil values", func(t *testing.T) {
+		schemaOrBool := &OpenAPISchemaOrBool{}
+
+		// Test JSON marshaling
+		jsonData, err := json.Marshal(schemaOrBool)
+		if err != nil {
+			t.Fatalf("Failed to marshal OpenAPISchemaOrBool with nil values: %v", err)
+		}
+
+		expected := "null"
+		if string(jsonData) != expected {
+			t.Errorf("Expected JSON '%s', got '%s'", expected, string(jsonData))
+		}
+	})
+}
+
+// Helper function for creating bool pointers
+func boolPtr(b bool) *bool {
+	return &b
+}

@@ -44,6 +44,20 @@ type Address struct {
 	Country    string `json:"country"`
 }
 
+// PaymentMethod represents different payment methods (OneOf example)
+type PaymentMethod struct {
+	Type string                 `json:"type"`
+	Data map[string]interface{} `json:"data"`
+}
+
+// ShippingMethod represents different shipping options (OneOf example)
+type ShippingMethod struct {
+	Type          string  `json:"type"`
+	Provider      string  `json:"provider"`
+	Cost          float64 `json:"cost"`
+	EstimatedDays int     `json:"estimated_days"`
+}
+
 // CreateOrderRequest represents the request body for creating an order
 type CreateOrderRequest struct {
 	UserID          string            `json:"user_id"`
@@ -260,21 +274,501 @@ func getOrderAnalyticsHandler(ctx context.Context, params struct{}, query OrderA
 
 func main() {
 	engine := gin.Default()
+
+	// Create OpenAPI generator with enhanced metadata
 	openAPIGen := operations.NewOpenAPIGenerator("Order Service API", "1.2.0")
+
+	// Demonstrate OpenAPI 3.1 Fixed Fields features
+	openAPIGen.SetDescription("A comprehensive order processing service with advanced e-commerce features, complex nested schemas, and rich validation")
+	openAPIGen.SetSummary("Order Processing & E-commerce API")
+	openAPIGen.SetTermsOfService("https://api.ecommerce.com/terms")
+
+	// Enhanced contact information
+	openAPIGen.SetContact(&operations.OpenAPIContact{
+		Name:  "E-commerce Order Team",
+		Email: "orders@ecommerce.com",
+		URL:   "https://api.ecommerce.com/support/orders",
+	})
+
+	// License information
+	openAPIGen.SetLicense(&operations.OpenAPILicense{
+		Name: "Apache 2.0",
+		URL:  "https://www.apache.org/licenses/LICENSE-2.0.html",
+	})
+
+	// Global tags with external documentation
+	openAPIGen.AddTag(operations.OpenAPITag{
+		Name:        "orders",
+		Description: "Order management operations including creation, status updates, and cancellation",
+		ExternalDocs: &operations.OpenAPIExternalDocs{
+			Description: "Order management documentation",
+			URL:         "https://docs.ecommerce.com/orders",
+		},
+	})
+
+	openAPIGen.AddTag(operations.OpenAPITag{
+		Name:        "e-commerce",
+		Description: "E-commerce specific operations for order processing",
+		ExternalDocs: &operations.OpenAPIExternalDocs{
+			Description: "E-commerce integration guide",
+			URL:         "https://docs.ecommerce.com/integration",
+		},
+	})
+
+	openAPIGen.AddTag(operations.OpenAPITag{
+		Name:        "filtering",
+		Description: "Advanced filtering and search operations for orders",
+	})
+
+	openAPIGen.AddTag(operations.OpenAPITag{
+		Name:        "analytics",
+		Description: "Order analytics and reporting operations",
+		ExternalDocs: &operations.OpenAPIExternalDocs{
+			Description: "Analytics API documentation",
+			URL:         "https://docs.ecommerce.com/analytics",
+		},
+	})
+
+	openAPIGen.AddTag(operations.OpenAPITag{
+		Name:        "status",
+		Description: "Order status management and tracking",
+	})
+
+	openAPIGen.AddTag(operations.OpenAPITag{
+		Name:        "reporting",
+		Description: "Business intelligence and reporting features",
+	})
+
+	// Global external documentation
+	openAPIGen.SetExternalDocs(&operations.OpenAPIExternalDocs{
+		Description: "Complete order service documentation with examples and integration guides",
+		URL:         "https://docs.ecommerce.com/order-service",
+	})
+
+	// Server configuration with variables
+	openAPIGen.AddServer(operations.OpenAPIServer{
+		URL:         "https://{environment}.orders.ecommerce.com/{version}",
+		Description: "Order service with configurable environment and API version",
+		Variables: map[string]operations.OpenAPIServerVariable{
+			"environment": {
+				Default:     "api",
+				Enum:        []string{"api", "staging", "sandbox"},
+				Description: "Order service environment",
+			},
+			"version": {
+				Default:     "v1",
+				Enum:        []string{"v1", "v2"},
+				Description: "API version",
+			},
+		},
+	})
+
+	// Set JSON Schema dialect
+	openAPIGen.SetJsonSchemaDialect("https://json-schema.org/draft/2020-12/schema")
+
 	router := operations.NewRouter(engine, openAPIGen)
 
-	// Define comprehensive schemas
+	// ===== OneOf Schema Examples for E-commerce =====
+	// These demonstrate complex OneOf patterns for flexible payment and shipping options
+
+	// Payment method OneOf - credit card, PayPal, bank transfer, crypto
+	creditCardPaymentSchema := validators.Object(map[string]interface{}{
+		"type": validators.String().Pattern("^credit_card$").
+			Example("credit_card").
+			Required(),
+		"card_number": validators.String().Pattern(`^\d{16}$`).
+			Example("1234567890123456").
+			Required(),
+		"expiry_month": validators.Number().Min(1).Max(12).
+			Example(12).
+			Required(),
+		"expiry_year": validators.Number().Min(2024).Max(2034).
+			Example(2025).
+			Required(),
+		"cvv": validators.String().Pattern(`^\d{3,4}$`).
+			Example("123").
+			Required(),
+		"cardholder_name": validators.String().Min(2).Max(100).
+			Example("John Doe").
+			Required(),
+		"billing_zip": validators.String().Pattern(`^\d{5}(-\d{4})?$`).
+			Example("10001").
+			Optional(),
+	}).Example(map[string]interface{}{
+		"type":            "credit_card",
+		"card_number":     "1234567890123456",
+		"expiry_month":    12,
+		"expiry_year":     2025,
+		"cvv":             "123",
+		"cardholder_name": "John Doe",
+		"billing_zip":     "10001",
+	}).Required()
+
+	paypalPaymentSchema := validators.Object(map[string]interface{}{
+		"type": validators.String().Pattern("^paypal$").
+			Example("paypal").
+			Required(),
+		"email": validators.String().Email().
+			Example("payment@example.com").
+			Required(),
+		"payer_id": validators.String().Min(10).Max(20).
+			Example("PAYERID123456789").
+			Optional(),
+	}).Example(map[string]interface{}{
+		"type":     "paypal",
+		"email":    "payment@example.com",
+		"payer_id": "PAYERID123456789",
+	}).Required()
+
+	bankTransferPaymentSchema := validators.Object(map[string]interface{}{
+		"type": validators.String().Pattern("^bank_transfer$").
+			Example("bank_transfer").
+			Required(),
+		"account_number": validators.String().Pattern(`^\d{10,12}$`).
+			Example("1234567890").
+			Required(),
+		"routing_number": validators.String().Pattern(`^\d{9}$`).
+			Example("123456789").
+			Required(),
+		"account_type": validators.String().
+			Examples(map[string]validators.ExampleObject{
+				"checking": {
+					Summary:     "Checking account",
+					Description: "Standard checking account for everyday transactions",
+					Value:       "checking",
+				},
+				"savings": {
+					Summary:     "Savings account",
+					Description: "Savings account with higher interest",
+					Value:       "savings",
+				},
+			}).
+			Required(),
+		"bank_name": validators.String().Min(2).Max(100).
+			Example("Chase Bank").
+			Optional(),
+	}).Example(map[string]interface{}{
+		"type":           "bank_transfer",
+		"account_number": "1234567890",
+		"routing_number": "123456789",
+		"account_type":   "checking",
+		"bank_name":      "Chase Bank",
+	}).Required()
+
+	cryptoPaymentSchema := validators.Object(map[string]interface{}{
+		"type": validators.String().Pattern("^crypto$").
+			Example("crypto").
+			Required(),
+		"currency": validators.String().
+			Examples(map[string]validators.ExampleObject{
+				"bitcoin": {
+					Summary:     "Bitcoin",
+					Description: "Bitcoin cryptocurrency payment",
+					Value:       "BTC",
+				},
+				"ethereum": {
+					Summary:     "Ethereum",
+					Description: "Ethereum cryptocurrency payment",
+					Value:       "ETH",
+				},
+				"litecoin": {
+					Summary:     "Litecoin",
+					Description: "Litecoin cryptocurrency payment",
+					Value:       "LTC",
+				},
+			}).
+			Required(),
+		"wallet_address": validators.String().Min(26).Max(62).
+			Example("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa").
+			Required(),
+		"network": validators.String().
+			Example("mainnet").
+			Optional().Default("mainnet"),
+	}).Example(map[string]interface{}{
+		"type":           "crypto",
+		"currency":       "BTC",
+		"wallet_address": "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
+		"network":        "mainnet",
+	}).Required()
+
+	// OneOf payment method schema
+	paymentMethodSchema := validators.OneOf(
+		creditCardPaymentSchema,
+		paypalPaymentSchema,
+		bankTransferPaymentSchema,
+		cryptoPaymentSchema,
+	).Required()
+
+	// Shipping method OneOf - standard, expedited, overnight, pickup
+	standardShippingSchema := validators.Object(map[string]interface{}{
+		"type": validators.String().Pattern("^standard$").
+			Example("standard").
+			Required(),
+		"provider": validators.String().
+			Examples(map[string]validators.ExampleObject{
+				"usps": {
+					Summary:     "USPS Standard",
+					Description: "United States Postal Service standard shipping",
+					Value:       "USPS",
+				},
+				"ups": {
+					Summary:     "UPS Ground",
+					Description: "UPS standard ground shipping",
+					Value:       "UPS",
+				},
+				"fedex": {
+					Summary:     "FedEx Ground",
+					Description: "FedEx standard ground shipping",
+					Value:       "FedEx",
+				},
+			}).
+			Required(),
+		"estimated_days": validators.Number().Min(3).Max(10).
+			Example(5).
+			Required(),
+		"cost": validators.Number().Min(0).
+			Example(9.99).
+			Required(),
+		"tracking_available": validators.Bool().
+			Example(true).
+			Optional().Default(true),
+	}).Example(map[string]interface{}{
+		"type":               "standard",
+		"provider":           "UPS",
+		"estimated_days":     5,
+		"cost":               9.99,
+		"tracking_available": true,
+	}).Required()
+
+	expeditedShippingSchema := validators.Object(map[string]interface{}{
+		"type": validators.String().Pattern("^expedited$").
+			Example("expedited").
+			Required(),
+		"provider": validators.String().
+			Example("FedEx").
+			Required(),
+		"estimated_days": validators.Number().Min(1).Max(3).
+			Example(2).
+			Required(),
+		"cost": validators.Number().Min(0).
+			Example(19.99).
+			Required(),
+		"signature_required": validators.Bool().
+			Example(false).
+			Optional().Default(false),
+	}).Example(map[string]interface{}{
+		"type":               "expedited",
+		"provider":           "FedEx",
+		"estimated_days":     2,
+		"cost":               19.99,
+		"signature_required": false,
+	}).Required()
+
+	overnightShippingSchema := validators.Object(map[string]interface{}{
+		"type": validators.String().Pattern("^overnight$").
+			Example("overnight").
+			Required(),
+		"provider": validators.String().
+			Example("FedEx").
+			Required(),
+		"estimated_days": validators.Number().Min(1).Max(1).
+			Example(1).
+			Required(),
+		"cost": validators.Number().Min(0).
+			Example(39.99).
+			Required(),
+		"delivery_time": validators.String().
+			Examples(map[string]validators.ExampleObject{
+				"morning": {
+					Summary:     "Morning delivery",
+					Description: "Delivery before 10:30 AM",
+					Value:       "10:30 AM",
+				},
+				"afternoon": {
+					Summary:     "Afternoon delivery",
+					Description: "Delivery before 5:00 PM",
+					Value:       "5:00 PM",
+				},
+			}).
+			Optional(),
+		"signature_required": validators.Bool().
+			Example(true).
+			Optional().Default(true),
+	}).Example(map[string]interface{}{
+		"type":               "overnight",
+		"provider":           "FedEx",
+		"estimated_days":     1,
+		"cost":               39.99,
+		"delivery_time":      "10:30 AM",
+		"signature_required": true,
+	}).Required()
+
+	pickupShippingSchema := validators.Object(map[string]interface{}{
+		"type": validators.String().Pattern("^pickup$").
+			Example("pickup").
+			Required(),
+		"location": validators.String().Min(5).Max(200).
+			Example("123 Store Street, New York, NY 10001").
+			Required(),
+		"store_hours": validators.String().
+			Example("9:00 AM - 9:00 PM").
+			Required(),
+		"cost": validators.Number().Min(0).
+			Example(0).
+			Required(),
+		"estimated_days": validators.Number().Min(1).Max(3).
+			Example(2).
+			Required(),
+		"special_instructions": validators.String().Max(500).
+			Example("Please bring photo ID for pickup verification").
+			Optional(),
+	}).Example(map[string]interface{}{
+		"type":                 "pickup",
+		"location":             "123 Store Street, New York, NY 10001",
+		"store_hours":          "9:00 AM - 9:00 PM",
+		"cost":                 0,
+		"estimated_days":       2,
+		"special_instructions": "Please bring photo ID for pickup verification",
+	}).Required()
+
+	// OneOf shipping method schema
+	shippingMethodSchema := validators.OneOf(
+		standardShippingSchema,
+		expeditedShippingSchema,
+		overnightShippingSchema,
+		pickupShippingSchema,
+	).Required()
+
+	// Define comprehensive schemas with rich examples
 	addressSchema := validators.Object(map[string]interface{}{
-		"street":      validators.String().Min(1).Max(255).Required(),
-		"city":        validators.String().Min(1).Max(100).Required(),
-		"state":       validators.String().Min(2).Max(100).Required(),
-		"postal_code": validators.String().Min(3).Max(20).Pattern("^[0-9A-Za-z\\s-]+$").Required(),
-		"country":     validators.String().Min(2).Max(3).Pattern("^[A-Z]{2,3}$").Required(),
+		"street": validators.String().Min(1).Max(255).
+			Examples(map[string]validators.ExampleObject{
+				"residential": {
+					Summary:     "Residential address",
+					Description: "Typical home address format",
+					Value:       "123 Oak Street",
+				},
+				"apartment": {
+					Summary:     "Apartment address",
+					Description: "Address with apartment number",
+					Value:       "456 Elm Ave, Apt 2B",
+				},
+				"business": {
+					Summary:     "Business address",
+					Description: "Commercial building address",
+					Value:       "789 Corporate Blvd, Suite 100",
+				},
+			}).
+			Required(),
+		"city": validators.String().Min(1).Max(100).
+			Example("New York").
+			Required(),
+		"state": validators.String().Min(2).Max(100).
+			Examples(map[string]validators.ExampleObject{
+				"abbreviated": {
+					Summary:     "State abbreviation",
+					Description: "Two-letter state code",
+					Value:       "NY",
+				},
+				"full_name": {
+					Summary:     "Full state name",
+					Description: "Complete state name",
+					Value:       "New York",
+				},
+			}).
+			Required(),
+		"postal_code": validators.String().Min(3).Max(20).Pattern("^[0-9A-Za-z\\s-]+$").
+			Examples(map[string]validators.ExampleObject{
+				"us_zip": {
+					Summary:     "US ZIP code",
+					Description: "Standard 5-digit US postal code",
+					Value:       "10001",
+				},
+				"us_zip_plus4": {
+					Summary:     "US ZIP+4 code",
+					Description: "Extended 9-digit US postal code",
+					Value:       "10001-1234",
+				},
+				"uk_postcode": {
+					Summary:     "UK postcode",
+					Description: "British postal code format",
+					Value:       "SW1A 1AA",
+				},
+			}).
+			Required(),
+		"country": validators.String().Min(2).Max(3).Pattern("^[A-Z]{2,3}$").
+			Examples(map[string]validators.ExampleObject{
+				"us": {
+					Summary:     "United States",
+					Description: "ISO country code for USA",
+					Value:       "US",
+				},
+				"uk": {
+					Summary:     "United Kingdom",
+					Description: "ISO country code for UK",
+					Value:       "GB",
+				},
+				"canada": {
+					Summary:     "Canada",
+					Description: "ISO country code for Canada",
+					Value:       "CA",
+				},
+			}).
+			Required(),
+	}).Example(map[string]interface{}{
+		"street":      "123 Oak Street",
+		"city":        "New York",
+		"state":       "NY",
+		"postal_code": "10001",
+		"country":     "US",
 	}).Required()
 
 	createOrderItemSchema := validators.Object(map[string]interface{}{
-		"product_id": validators.String().Min(1).Pattern("^prod_[a-zA-Z0-9]+$").Required(),
-		"quantity":   validators.Number().Min(1).Max(100).Required(),
+		"product_id": validators.String().Min(1).Pattern("^prod_[a-zA-Z0-9]+$").
+			Examples(map[string]validators.ExampleObject{
+				"electronics": {
+					Summary:     "Electronics product",
+					Description: "ID for electronic devices and gadgets",
+					Value:       "prod_headphones_123",
+				},
+				"clothing": {
+					Summary:     "Clothing product",
+					Description: "ID for apparel and fashion items",
+					Value:       "prod_shirt_456",
+				},
+				"books": {
+					Summary:     "Book product",
+					Description: "ID for books and publications",
+					Value:       "prod_book_789",
+				},
+			}).
+			Required(),
+		"quantity": validators.Number().
+			Integer().            // Ensure whole units only
+			MultipleOf(1.0).      // OpenAPI 3.1: Must be whole items
+			ExclusiveMin(0.0).    // OpenAPI 3.1: Must be at least 1
+			ExclusiveMax(1000.0). // OpenAPI 3.1: Must be under 1000
+			Examples(map[string]validators.ExampleObject{
+				"single": {
+					Summary:     "Single item",
+					Description: "Ordering just one unit",
+					Value:       1,
+				},
+				"multiple": {
+					Summary:     "Multiple items",
+					Description: "Bulk order of several units",
+					Value:       5,
+				},
+				"bulk": {
+					Summary:     "Bulk order",
+					Description: "Large quantity for wholesale",
+					Value:       25,
+				},
+			}).
+			Required(),
+	}).Example(map[string]interface{}{
+		"product_id": "prod_headphones_123",
+		"quantity":   2,
 	}).Required()
 
 	createOrderBodySchema := validators.Object(map[string]interface{}{
@@ -283,6 +777,55 @@ func main() {
 		"currency":         validators.String().Min(3).Max(3).Pattern("^[A-Z]{3}$").Optional().Default("USD"),
 		"shipping_address": addressSchema,
 		"billing_address":  addressSchema,
+		"payment_method":   paymentMethodSchema,
+		"shipping_method":  shippingMethodSchema,
+		"special_instructions": validators.String().Max(1000).
+			Examples(map[string]validators.ExampleObject{
+				"fragile": {
+					Summary:     "Fragile item instructions",
+					Description: "Instructions for handling fragile or delicate items",
+					Value:       "Please handle with care - contains fragile electronics",
+				},
+				"gift": {
+					Summary:     "Gift wrapping instructions",
+					Description: "Instructions for gift wrapping and presentation",
+					Value:       "Please gift wrap with premium paper and include gift receipt",
+				},
+			}).Optional(),
+	}).Example(map[string]interface{}{
+		"user_id": "usr_12345",
+		"items": []map[string]interface{}{
+			{
+				"product_id": "prod_headphones_123",
+				"quantity":   1,
+			},
+		},
+		"currency": "USD",
+		"shipping_address": map[string]interface{}{
+			"street":      "123 Oak Street",
+			"city":        "New York",
+			"state":       "NY",
+			"postal_code": "10001",
+			"country":     "US",
+		},
+		"billing_address": map[string]interface{}{
+			"street":      "123 Oak Street",
+			"city":        "New York",
+			"state":       "NY",
+			"postal_code": "10001",
+			"country":     "US",
+		},
+		"payment_method": map[string]interface{}{
+			"type":            "credit_card",
+			"card_number":     "1234567890123456",
+			"cardholder_name": "John Doe",
+			"cvv":             "123",
+		},
+		"shipping_method": map[string]interface{}{
+			"type":     "expedited",
+			"provider": "FedEx",
+		},
+		"special_instructions": "Please handle with care - contains fragile electronics",
 	}).Required()
 
 	updateOrderStatusBodySchema := validators.Object(map[string]interface{}{
@@ -317,9 +860,9 @@ func main() {
 	orderItemSchema := validators.Object(map[string]interface{}{
 		"product_id": validators.String().Min(1).Required(),
 		"name":       validators.String().Min(1).Required(),
-		"quantity":   validators.Number().Min(1).Required(),
-		"price":      validators.Number().Min(0).Required(),
-		"subtotal":   validators.Number().Min(0).Required(),
+		"quantity":   validators.Number().Integer().MultipleOf(1.0).Min(1).Required(),   // OpenAPI 3.1: Whole units
+		"price":      validators.Number().MultipleOf(0.01).ExclusiveMin(0.0).Required(), // OpenAPI 3.1: Currency precision, positive
+		"subtotal":   validators.Number().MultipleOf(0.01).Min(0.0).Required(),          // OpenAPI 3.1: Currency precision
 	}).Required()
 
 	orderResponseSchema := validators.Object(map[string]interface{}{
@@ -327,7 +870,7 @@ func main() {
 		"user_id":          validators.String().Min(1).Required(),
 		"status":           validators.String().Required(),
 		"items":            validators.Array(orderItemSchema).Required(),
-		"total_amount":     validators.Number().Min(0).Required(),
+		"total_amount":     validators.Number().MultipleOf(0.01).Min(0.0).Required(), // OpenAPI 3.1: Currency precision
 		"currency":         validators.String().Min(3).Max(3).Required(),
 		"shipping_address": addressSchema,
 		"billing_address":  addressSchema,
@@ -420,6 +963,206 @@ func main() {
 		WithResponse(analyticsResponseSchema).
 		Handler(operations.CreateValidatedHandler(getOrderAnalyticsHandler, nil, analyticsQuerySchema, nil, analyticsResponseSchema))
 
+	// New operation showcasing OneOf for payment and shipping methods
+	createAdvancedOrderOp := operations.NewSimple().
+		POST("/orders/advanced").
+		Summary("Create order with flexible payment and shipping options").
+		Description("Creates an order with OneOf support for multiple payment methods (credit card, PayPal, bank transfer, crypto) "+
+			"and shipping options (standard, expedited, overnight, pickup). This endpoint demonstrates how OneOf schemas "+
+			"provide flexible API design for e-commerce platforms where customers can choose from various payment and shipping methods.").
+		Tags("orders", "e-commerce", "oneof-example", "payment", "shipping").
+		WithBody(createOrderBodySchema).
+		WithResponse(orderResponseSchema).
+		Handler(operations.CreateValidatedHandler(
+			createOrderHandler, // Reuse existing handler for demo
+			nil,
+			nil,
+			createOrderBodySchema,
+			orderResponseSchema,
+		))
+
+	// ===== Pricing Calculator Operation with OpenAPI 3.1 features =====
+	pricingCalculatorRequestSchema := validators.Object(map[string]interface{}{
+		"calculation_type": validators.String().Const("order_total").Required().
+			Example("order_total"),
+		"base_currency": validators.String().Const("USD").Required().
+			Example("USD"),
+		"items": validators.Array(validators.Object(map[string]interface{}{
+			"unit_price": validators.Number().
+				MultipleOf(0.01).       // OpenAPI 3.1: Currency precision (cents)
+				ExclusiveMin(0.0).      // OpenAPI 3.1: Must be positive
+				ExclusiveMax(100000.0). // OpenAPI 3.1: Under $100k per unit
+				Required().
+				Example(29.99),
+			"quantity": validators.Number().
+				Integer().             // Whole units only
+				MultipleOf(1.0).       // OpenAPI 3.1: Must be whole items
+				ExclusiveMin(0.0).     // OpenAPI 3.1: Must be at least 1
+				ExclusiveMax(10000.0). // OpenAPI 3.1: Under 10k units
+				Required().
+				Example(2),
+			"discount_percent": validators.Number().
+				MultipleOf(0.1).     // OpenAPI 3.1: Discount in 0.1% increments
+				Min(0.0).            // Min 0%
+				ExclusiveMax(100.0). // OpenAPI 3.1: Must be under 100%
+				Optional().
+				Default(0.0).
+				Example(10.0),
+		}).Required()).
+			UniqueItems().            // OpenAPI 3.1: No duplicate pricing entries
+			MinItems(1).MaxItems(50). // Reasonable limits
+			Required(),
+		"tax_rate": validators.Number().
+			MultipleOf(0.001). // OpenAPI 3.1: Tax rate precision (0.1%)
+			Min(0.0).          // No negative tax
+			ExclusiveMax(1.0). // OpenAPI 3.1: Under 100% tax
+			Optional().
+			Default(0.0875). // Default 8.75% tax
+			Example(0.0875),
+		"shipping_cost": validators.Number().
+			MultipleOf(0.01).     // OpenAPI 3.1: Currency precision
+			Min(0.0).             // Free shipping allowed
+			ExclusiveMax(1000.0). // OpenAPI 3.1: Under $1000 shipping
+			Optional().
+			Default(0.0).
+			Example(9.99),
+		"currency_settings": validators.Object(map[string]interface{}{
+			"decimal_places": validators.Number().Min(2).Max(2).Required(), // Always 2 for currency
+			"rounding_mode":  validators.String().Const("round_half_up").Required(),
+		}).
+			MinProperties(2).MaxProperties(2). // OpenAPI 3.1: Exactly 2 properties required
+			Required(),
+	}).Example(map[string]interface{}{
+		"calculation_type": "order_total",
+		"base_currency":    "USD",
+		"items": []interface{}{
+			map[string]interface{}{
+				"unit_price":       29.99,
+				"quantity":         2,
+				"discount_percent": 10.0,
+			},
+			map[string]interface{}{
+				"unit_price":       15.50,
+				"quantity":         1,
+				"discount_percent": 0.0,
+			},
+		},
+		"tax_rate":      0.0875,
+		"shipping_cost": 9.99,
+		"currency_settings": map[string]interface{}{
+			"decimal_places": 2,
+			"rounding_mode":  "round_half_up",
+		},
+	}).Required()
+
+	pricingCalculatorResponseSchema := validators.Object(map[string]interface{}{
+		"calculation_type": validators.String().Const("order_total").Required(),
+		"base_currency":    validators.String().Const("USD").Required(),
+		"breakdown": validators.Object(map[string]interface{}{
+			"subtotal":            validators.Number().MultipleOf(0.01).Required(),
+			"total_discount":      validators.Number().MultipleOf(0.01).Required(),
+			"discounted_subtotal": validators.Number().MultipleOf(0.01).Required(),
+			"tax_amount":          validators.Number().MultipleOf(0.01).Required(),
+			"shipping_cost":       validators.Number().MultipleOf(0.01).Required(),
+			"final_total":         validators.Number().MultipleOf(0.01).Required(),
+		}).
+			MinProperties(6).MaxProperties(6). // OpenAPI 3.1: Exactly 6 breakdown fields
+			Required(),
+		"item_details": validators.Array(validators.Object(map[string]interface{}{
+			"subtotal_before_discount": validators.Number().MultipleOf(0.01).Required(),
+			"discount_amount":          validators.Number().MultipleOf(0.01).Required(),
+			"subtotal_after_discount":  validators.Number().MultipleOf(0.01).Required(),
+		}).Required()).
+			UniqueItems(). // OpenAPI 3.1: No duplicate item calculations
+			Required(),
+	}).Example(map[string]interface{}{
+		"calculation_type": "order_total",
+		"base_currency":    "USD",
+		"breakdown": map[string]interface{}{
+			"subtotal":            75.48,
+			"total_discount":      5.99,
+			"discounted_subtotal": 69.49,
+			"tax_amount":          6.08,
+			"shipping_cost":       9.99,
+			"final_total":         85.56,
+		},
+		"item_details": []interface{}{
+			map[string]interface{}{
+				"subtotal_before_discount": 59.98,
+				"discount_amount":          5.99,
+				"subtotal_after_discount":  53.99,
+			},
+			map[string]interface{}{
+				"subtotal_before_discount": 15.50,
+				"discount_amount":          0.00,
+				"subtotal_after_discount":  15.50,
+			},
+		},
+	}).Required()
+
+	calculatePricingOp := operations.NewSimple().
+		POST("/pricing/calculate").
+		Summary("Calculate order pricing with advanced OpenAPI 3.1 validation").
+		Description("Calculates detailed order pricing including taxes, discounts, and shipping using OpenAPI 3.1 features: "+
+			"const validation for fixed values, multipleOf for currency precision, exclusiveMin/Max for bounds, "+
+			"uniqueItems for arrays, and minProperties/maxProperties for objects.").
+		Tags("pricing", "calculation", "openapi31-example").
+		WithBody(pricingCalculatorRequestSchema).
+		WithResponse(pricingCalculatorResponseSchema).
+		Handler(operations.CreateValidatedHandler(
+			func(ctx context.Context, params struct{}, query struct{}, body map[string]interface{}) (map[string]interface{}, error) {
+				// Simulate complex pricing calculation
+				items := body["items"].([]interface{})
+				taxRate := body["tax_rate"].(float64)
+				shippingCost := body["shipping_cost"].(float64)
+
+				var subtotal, totalDiscount float64
+				var itemDetails []interface{}
+
+				for _, item := range items {
+					itemMap := item.(map[string]interface{})
+					unitPrice := itemMap["unit_price"].(float64)
+					quantity := itemMap["quantity"].(float64)
+					discountPercent := itemMap["discount_percent"].(float64)
+
+					subtotalBeforeDiscount := unitPrice * quantity
+					discountAmount := subtotalBeforeDiscount * (discountPercent / 100.0)
+					subtotalAfterDiscount := subtotalBeforeDiscount - discountAmount
+
+					subtotal += subtotalBeforeDiscount
+					totalDiscount += discountAmount
+
+					itemDetails = append(itemDetails, map[string]interface{}{
+						"subtotal_before_discount": subtotalBeforeDiscount,
+						"discount_amount":          discountAmount,
+						"subtotal_after_discount":  subtotalAfterDiscount,
+					})
+				}
+
+				discountedSubtotal := subtotal - totalDiscount
+				taxAmount := discountedSubtotal * taxRate
+				finalTotal := discountedSubtotal + taxAmount + shippingCost
+
+				return map[string]interface{}{
+					"calculation_type": "order_total",
+					"base_currency":    "USD",
+					"breakdown": map[string]interface{}{
+						"subtotal":            subtotal,
+						"total_discount":      totalDiscount,
+						"discounted_subtotal": discountedSubtotal,
+						"tax_amount":          taxAmount,
+						"shipping_cost":       shippingCost,
+						"final_total":         finalTotal,
+					},
+					"item_details": itemDetails,
+				}, nil
+			},
+			nil,
+			nil,
+			pricingCalculatorRequestSchema,
+			pricingCalculatorResponseSchema,
+		))
+
 	// Register operations
 	router.Register(createOrderOp)
 	router.Register(getOrderOp)
@@ -427,6 +1170,8 @@ func main() {
 	router.Register(cancelOrderOp)
 	router.Register(listOrdersOp)
 	router.Register(getAnalyticsOp)
+	router.Register(createAdvancedOrderOp) // OneOf showcase operation
+	router.Register(calculatePricingOp)    // OpenAPI 3.1 features showcase
 
 	// Health check
 	engine.GET("/health", func(c *gin.Context) {

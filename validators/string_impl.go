@@ -11,16 +11,28 @@ import (
 // Core string schema struct (unexported)
 // This contains all the validation configuration and is wrapped by state-specific types
 type stringSchema struct {
-	minLength    int
-	maxLength    int
-	required     bool
-	pattern      *regexp.Regexp
-	emailFormat  bool
-	urlFormat    bool
-	customFunc   func(string) error
-	optional     bool
-	defaultValue *string
-	customError  map[string]string
+	minLength     int
+	maxLength     int
+	required      bool
+	pattern       *regexp.Regexp
+	emailFormat   bool
+	urlFormat     bool
+	constValue    *string
+	customFunc    func(string) error
+	optional      bool
+	defaultValue  *string
+	customError   map[string]string
+	example       interface{}
+	examples      map[string]ExampleObject
+	externalValue string
+}
+
+// ExampleObject represents an example value with metadata
+type ExampleObject struct {
+	Summary       string      `json:"summary,omitempty"`
+	Description   string      `json:"description,omitempty"`
+	Value         interface{} `json:"value,omitempty"`
+	ExternalValue string      `json:"externalValue,omitempty"`
 }
 
 // State wrapper types for compile-time safety
@@ -69,6 +81,11 @@ func (s *stringSchema) Email() StringBuilder {
 
 func (s *stringSchema) URL() StringBuilder {
 	s.urlFormat = true
+	return s
+}
+
+func (s *stringSchema) Const(value string) StringBuilder {
+	s.constValue = &value
 	return s
 }
 
@@ -157,6 +174,11 @@ func (r *requiredStringSchema) URL() RequiredStringBuilder {
 	return r
 }
 
+func (r *requiredStringSchema) Const(value string) RequiredStringBuilder {
+	r.constValue = &value
+	return r
+}
+
 func (r *requiredStringSchema) Custom(fn func(string) error) RequiredStringBuilder {
 	r.customFunc = fn
 	return r
@@ -230,6 +252,11 @@ func (o *optionalStringSchema) Email() OptionalStringBuilder {
 
 func (o *optionalStringSchema) URL() OptionalStringBuilder {
 	o.urlFormat = true
+	return o
+}
+
+func (o *optionalStringSchema) Const(value string) OptionalStringBuilder {
+	o.constValue = &value
 	return o
 }
 
@@ -350,6 +377,12 @@ func (s *stringSchema) validate(data interface{}) error {
 			s.getErrorMessage(errorKeys.URL, "invalid URL format"))
 	}
 
+	// Const validation
+	if s.constValue != nil && str != *s.constValue {
+		return goop.NewValidationError(str, str,
+			s.getErrorMessage(errorKeys.Const, fmt.Sprintf("value must be exactly '%s'", *s.constValue)))
+	}
+
 	// Custom validation
 	if s.customFunc != nil {
 		if err := s.customFunc(str); err != nil {
@@ -358,6 +391,54 @@ func (s *stringSchema) validate(data interface{}) error {
 	}
 
 	return nil
+}
+
+// Example methods for StringBuilder
+func (s *stringSchema) Example(value interface{}) StringBuilder {
+	s.example = value
+	return s
+}
+
+func (s *stringSchema) Examples(examples map[string]ExampleObject) StringBuilder {
+	s.examples = examples
+	return s
+}
+
+func (s *stringSchema) ExampleFromFile(path string) StringBuilder {
+	s.externalValue = path
+	return s
+}
+
+// Example methods for RequiredStringBuilder
+func (r *requiredStringSchema) Example(value interface{}) RequiredStringBuilder {
+	r.example = value
+	return r
+}
+
+func (r *requiredStringSchema) Examples(examples map[string]ExampleObject) RequiredStringBuilder {
+	r.examples = examples
+	return r
+}
+
+func (r *requiredStringSchema) ExampleFromFile(path string) RequiredStringBuilder {
+	r.externalValue = path
+	return r
+}
+
+// Example methods for OptionalStringBuilder
+func (o *optionalStringSchema) Example(value interface{}) OptionalStringBuilder {
+	o.example = value
+	return o
+}
+
+func (o *optionalStringSchema) Examples(examples map[string]ExampleObject) OptionalStringBuilder {
+	o.examples = examples
+	return o
+}
+
+func (o *optionalStringSchema) ExampleFromFile(path string) OptionalStringBuilder {
+	o.externalValue = path
+	return o
 }
 
 // Helper methods (unexported)

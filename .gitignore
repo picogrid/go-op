@@ -87,3 +87,8 @@ api-spec.*
 *.iml
 go-op-cli
 docs
+
+# service examples
+order-service
+user-service
+notification-service

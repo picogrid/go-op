@@ -80,3 +80,8 @@ func PositiveNumber() NumberBuilder {
 func IntegerNumber() NumberBuilder {
 	return Number().Integer()
 }
+
+// Schema Composition Functions - exported from composition_impl.go
+
+// OneOf, AllOf, AnyOf, and Not functions are defined in composition_impl.go
+// and provide schema composition capabilities for complex validation scenarios.

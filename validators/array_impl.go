@@ -14,11 +14,15 @@ type arraySchema struct {
 	minItems      int
 	maxItems      int
 	contains      interface{}
+	uniqueItems   bool
 	customFunc    func([]interface{}) error
 	required      bool
 	optional      bool
 	defaultValue  []interface{}
 	customError   map[string]string
+	example       interface{}
+	examples      map[string]ExampleObject
+	externalValue string
 }
 
 // State wrapper types for compile-time safety
@@ -45,6 +49,11 @@ func (a *arraySchema) MaxItems(count int) ArrayBuilder {
 
 func (a *arraySchema) Contains(value interface{}) ArrayBuilder {
 	a.contains = value
+	return a
+}
+
+func (a *arraySchema) UniqueItems() ArrayBuilder {
+	a.uniqueItems = true
 	return a
 }
 
@@ -105,6 +114,11 @@ func (r *requiredArraySchema) Contains(value interface{}) RequiredArrayBuilder {
 	return r
 }
 
+func (r *requiredArraySchema) UniqueItems() RequiredArrayBuilder {
+	r.uniqueItems = true
+	return r
+}
+
 func (r *requiredArraySchema) Custom(fn func([]interface{}) error) RequiredArrayBuilder {
 	r.customFunc = fn
 	return r
@@ -150,6 +164,11 @@ func (o *optionalArraySchema) MaxItems(count int) OptionalArrayBuilder {
 
 func (o *optionalArraySchema) Contains(value interface{}) OptionalArrayBuilder {
 	o.contains = value
+	return o
+}
+
+func (o *optionalArraySchema) UniqueItems() OptionalArrayBuilder {
+	o.uniqueItems = true
 	return o
 }
 
@@ -276,6 +295,21 @@ func (a *arraySchema) validate(data interface{}) error {
 		}
 	}
 
+	// Unique items validation
+	if a.uniqueItems {
+		seen := make(map[string]bool)
+		for i, item := range arr {
+			// Create a string representation for comparison
+			key := fmt.Sprintf("%T:%v", item, item)
+			if seen[key] {
+				return goop.NewValidationError(fmt.Sprintf("%v", arr), arr,
+					a.getErrorMessage(errorKeys.UniqueItems,
+						fmt.Sprintf("array contains duplicate item at index %d: %v", i, item)))
+			}
+			seen[key] = true
+		}
+	}
+
 	// Custom validation
 	if a.customFunc != nil {
 		if err := a.customFunc(arr); err != nil {
@@ -358,6 +392,54 @@ func (a *arraySchema) validateElement(item interface{}) error {
 
 	// If we can't find a way to validate, that's an error in the schema definition
 	return fmt.Errorf("element schema does not implement validation interface: %T", a.elementSchema)
+}
+
+// Example methods for ArrayBuilder
+func (a *arraySchema) Example(value interface{}) ArrayBuilder {
+	a.example = value
+	return a
+}
+
+func (a *arraySchema) Examples(examples map[string]ExampleObject) ArrayBuilder {
+	a.examples = examples
+	return a
+}
+
+func (a *arraySchema) ExampleFromFile(path string) ArrayBuilder {
+	a.externalValue = path
+	return a
+}
+
+// Example methods for RequiredArrayBuilder
+func (r *requiredArraySchema) Example(value interface{}) RequiredArrayBuilder {
+	r.example = value
+	return r
+}
+
+func (r *requiredArraySchema) Examples(examples map[string]ExampleObject) RequiredArrayBuilder {
+	r.examples = examples
+	return r
+}
+
+func (r *requiredArraySchema) ExampleFromFile(path string) RequiredArrayBuilder {
+	r.externalValue = path
+	return r
+}
+
+// Example methods for OptionalArrayBuilder
+func (o *optionalArraySchema) Example(value interface{}) OptionalArrayBuilder {
+	o.example = value
+	return o
+}
+
+func (o *optionalArraySchema) Examples(examples map[string]ExampleObject) OptionalArrayBuilder {
+	o.examples = examples
+	return o
+}
+
+func (o *optionalArraySchema) ExampleFromFile(path string) OptionalArrayBuilder {
+	o.externalValue = path
+	return o
 }
 
 // Helper methods (unexported)

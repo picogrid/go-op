@@ -7,10 +7,18 @@ type NumberBuilder interface {
 	// Configuration methods - these return NumberBuilder to allow chaining
 	Min(value float64) NumberBuilder
 	Max(value float64) NumberBuilder
+	ExclusiveMin(value float64) NumberBuilder
+	ExclusiveMax(value float64) NumberBuilder
+	MultipleOf(value float64) NumberBuilder
 	Integer() NumberBuilder
 	Positive() NumberBuilder
 	Negative() NumberBuilder
 	Custom(fn func(float64) error) NumberBuilder
+
+	// Example methods for OpenAPI documentation
+	Example(value interface{}) NumberBuilder
+	Examples(examples map[string]ExampleObject) NumberBuilder
+	ExampleFromFile(path string) NumberBuilder
 
 	// State transition methods - these change the type to prevent invalid chaining
 	Required() RequiredNumberBuilder // Transitions to required state
@@ -34,10 +42,18 @@ type RequiredNumberBuilder interface {
 	// Configuration methods - these return RequiredNumberBuilder to maintain state
 	Min(value float64) RequiredNumberBuilder
 	Max(value float64) RequiredNumberBuilder
+	ExclusiveMin(value float64) RequiredNumberBuilder
+	ExclusiveMax(value float64) RequiredNumberBuilder
+	MultipleOf(value float64) RequiredNumberBuilder
 	Integer() RequiredNumberBuilder
 	Positive() RequiredNumberBuilder
 	Negative() RequiredNumberBuilder
 	Custom(fn func(float64) error) RequiredNumberBuilder
+
+	// Example methods for OpenAPI documentation
+	Example(value interface{}) RequiredNumberBuilder
+	Examples(examples map[string]ExampleObject) RequiredNumberBuilder
+	ExampleFromFile(path string) RequiredNumberBuilder
 
 	// Error message configuration methods
 	WithMessage(validationType, message string) RequiredNumberBuilder
@@ -62,11 +78,19 @@ type OptionalNumberBuilder interface {
 	// Configuration methods - these return OptionalNumberBuilder to maintain state
 	Min(value float64) OptionalNumberBuilder
 	Max(value float64) OptionalNumberBuilder
+	ExclusiveMin(value float64) OptionalNumberBuilder
+	ExclusiveMax(value float64) OptionalNumberBuilder
+	MultipleOf(value float64) OptionalNumberBuilder
 	Integer() OptionalNumberBuilder
 	Positive() OptionalNumberBuilder
 	Negative() OptionalNumberBuilder
 	Custom(fn func(float64) error) OptionalNumberBuilder
 	Default(value float64) OptionalNumberBuilder // Only available on optional builders!
+
+	// Example methods for OpenAPI documentation
+	Example(value interface{}) OptionalNumberBuilder
+	Examples(examples map[string]ExampleObject) OptionalNumberBuilder
+	ExampleFromFile(path string) OptionalNumberBuilder
 
 	// Error message configuration methods
 	WithMessage(validationType, message string) OptionalNumberBuilder

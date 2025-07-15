@@ -279,28 +279,36 @@ func TestAddParametersFromSchema(t *testing.T) {
 		t.Errorf("Expected 2 path parameters, got %d", len(operation.Parameters))
 	}
 
-	// Check first parameter (id)
-	idParam := operation.Parameters[0]
-	if idParam.Name != "id" {
-		t.Errorf("Expected first parameter name 'id', got '%s'", idParam.Name)
+	// Check parameters by name (order is not guaranteed due to map iteration)
+	paramsByName := make(map[string]operations.OpenAPIParameter)
+	for _, param := range operation.Parameters {
+		paramsByName[param.Name] = param
 	}
 
-	if idParam.In != "path" {
-		t.Errorf("Expected parameter in 'path', got '%s'", idParam.In)
+	// Check id parameter
+	idParam, hasId := paramsByName["id"]
+	if !hasId {
+		t.Errorf("Expected to find 'id' parameter")
+	} else {
+		if idParam.In != "path" {
+			t.Errorf("Expected id parameter in 'path', got '%s'", idParam.In)
+		}
+		if !idParam.Required {
+			t.Errorf("Expected id path parameter to be required")
+		}
 	}
 
-	if !idParam.Required {
-		t.Errorf("Expected id path parameter to be required")
-	}
-
-	// Check second parameter (category)
-	categoryParam := operation.Parameters[1]
-	if categoryParam.Name != "category" {
-		t.Errorf("Expected second parameter name 'category', got '%s'", categoryParam.Name)
-	}
-
-	if !categoryParam.Required {
-		t.Errorf("Expected category path parameter to be required")
+	// Check category parameter
+	categoryParam, hasCategory := paramsByName["category"]
+	if !hasCategory {
+		t.Errorf("Expected to find 'category' parameter")
+	} else {
+		if categoryParam.In != "path" {
+			t.Errorf("Expected category parameter in 'path', got '%s'", categoryParam.In)
+		}
+		if !categoryParam.Required {
+			t.Errorf("Expected category path parameter to be required")
+		}
 	}
 
 	// Test query parameters - these can be optional

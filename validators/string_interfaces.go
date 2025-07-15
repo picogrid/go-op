@@ -10,7 +10,13 @@ type StringBuilder interface {
 	Pattern(pattern string) StringBuilder
 	Email() StringBuilder
 	URL() StringBuilder
+	Const(value string) StringBuilder
 	Custom(fn func(string) error) StringBuilder
+
+	// Example methods for OpenAPI documentation
+	Example(value interface{}) StringBuilder
+	Examples(examples map[string]ExampleObject) StringBuilder
+	ExampleFromFile(path string) StringBuilder
 
 	// State transition methods - these change the type to prevent invalid chaining
 	Required() RequiredStringBuilder // Transitions to required state
@@ -37,7 +43,13 @@ type RequiredStringBuilder interface {
 	Pattern(pattern string) RequiredStringBuilder
 	Email() RequiredStringBuilder
 	URL() RequiredStringBuilder
+	Const(value string) RequiredStringBuilder
 	Custom(fn func(string) error) RequiredStringBuilder
+
+	// Example methods for OpenAPI documentation
+	Example(value interface{}) RequiredStringBuilder
+	Examples(examples map[string]ExampleObject) RequiredStringBuilder
+	ExampleFromFile(path string) RequiredStringBuilder
 
 	// Error message configuration methods
 	WithMessage(validationType, message string) RequiredStringBuilder
@@ -65,8 +77,14 @@ type OptionalStringBuilder interface {
 	Pattern(pattern string) OptionalStringBuilder
 	Email() OptionalStringBuilder
 	URL() OptionalStringBuilder
+	Const(value string) OptionalStringBuilder
 	Custom(fn func(string) error) OptionalStringBuilder
 	Default(value string) OptionalStringBuilder // Only available on optional builders!
+
+	// Example methods for OpenAPI documentation
+	Example(value interface{}) OptionalStringBuilder
+	Examples(examples map[string]ExampleObject) OptionalStringBuilder
+	ExampleFromFile(path string) OptionalStringBuilder
 
 	// Error message configuration methods
 	WithMessage(validationType, message string) OptionalStringBuilder

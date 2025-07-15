@@ -8,7 +8,13 @@ type ArrayBuilder interface {
 	MinItems(count int) ArrayBuilder
 	MaxItems(count int) ArrayBuilder
 	Contains(value interface{}) ArrayBuilder
+	UniqueItems() ArrayBuilder
 	Custom(fn func([]interface{}) error) ArrayBuilder
+
+	// Example methods for OpenAPI documentation
+	Example(value interface{}) ArrayBuilder
+	Examples(examples map[string]ExampleObject) ArrayBuilder
+	ExampleFromFile(path string) ArrayBuilder
 
 	// State transition methods - these change the type to prevent invalid chaining
 	Required() RequiredArrayBuilder // Transitions to required state
@@ -34,7 +40,13 @@ type RequiredArrayBuilder interface {
 	MinItems(count int) RequiredArrayBuilder
 	MaxItems(count int) RequiredArrayBuilder
 	Contains(value interface{}) RequiredArrayBuilder
+	UniqueItems() RequiredArrayBuilder
 	Custom(fn func([]interface{}) error) RequiredArrayBuilder
+
+	// Example methods for OpenAPI documentation
+	Example(value interface{}) RequiredArrayBuilder
+	Examples(examples map[string]ExampleObject) RequiredArrayBuilder
+	ExampleFromFile(path string) RequiredArrayBuilder
 
 	// Error message configuration methods
 	WithMessage(validationType, message string) RequiredArrayBuilder
@@ -58,8 +70,14 @@ type OptionalArrayBuilder interface {
 	MinItems(count int) OptionalArrayBuilder
 	MaxItems(count int) OptionalArrayBuilder
 	Contains(value interface{}) OptionalArrayBuilder
+	UniqueItems() OptionalArrayBuilder
 	Custom(fn func([]interface{}) error) OptionalArrayBuilder
 	Default(value []interface{}) OptionalArrayBuilder // Only available on optional builders!
+
+	// Example methods for OpenAPI documentation
+	Example(value interface{}) OptionalArrayBuilder
+	Examples(examples map[string]ExampleObject) OptionalArrayBuilder
+	ExampleFromFile(path string) OptionalArrayBuilder
 
 	// Error message configuration methods
 	WithMessage(validationType, message string) OptionalArrayBuilder

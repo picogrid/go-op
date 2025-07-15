@@ -33,9 +33,19 @@ func (s *stringSchema) ToOpenAPISchema() *goop.OpenAPISchema {
 		schema.Pattern = s.pattern.String()
 	}
 
+	// Add const constraint
+	if s.constValue != nil {
+		schema.Const = *s.constValue
+	}
+
 	// Add default value for optional schemas
 	if s.defaultValue != nil {
 		schema.Default = *s.defaultValue
+	}
+
+	// Add example information
+	if s.example != nil {
+		schema.Example = s.example
 	}
 
 	return schema
@@ -113,6 +123,19 @@ func (n *numberSchema) ToOpenAPISchema() *goop.OpenAPISchema {
 		schema.Maximum = n.maxValue
 	}
 
+	// Add exclusive range constraints
+	if n.exclusiveMinValue != nil {
+		schema.ExclusiveMinimum = n.exclusiveMinValue
+	}
+	if n.exclusiveMaxValue != nil {
+		schema.ExclusiveMaximum = n.exclusiveMaxValue
+	}
+
+	// Add multipleOf constraint
+	if n.multipleOfValue != nil {
+		schema.MultipleOf = n.multipleOfValue
+	}
+
 	// Handle positive/negative constraints
 	if n.positiveOnly && (n.minValue == nil || *n.minValue <= 0) {
 		zero := 0.0
@@ -126,6 +149,11 @@ func (n *numberSchema) ToOpenAPISchema() *goop.OpenAPISchema {
 	// Add default value for optional schemas
 	if n.defaultValue != nil {
 		schema.Default = *n.defaultValue
+	}
+
+	// Add example information
+	if n.example != nil {
+		schema.Example = n.example
 	}
 
 	return schema
@@ -192,12 +220,15 @@ func (a *arraySchema) ToOpenAPISchema() *goop.OpenAPISchema {
 
 	// Add array size constraints
 	if a.minItems > 0 {
-		minItems := a.minItems
-		schema.MinLength = &minItems // Using MinLength for array minItems in OpenAPI
+		schema.MinItems = &a.minItems
 	}
 	if a.maxItems > 0 {
-		maxItems := a.maxItems
-		schema.MaxLength = &maxItems // Using MaxLength for array maxItems in OpenAPI
+		schema.MaxItems = &a.maxItems
+	}
+
+	// Add uniqueItems constraint
+	if a.uniqueItems {
+		schema.UniqueItems = &a.uniqueItems
 	}
 
 	// Generate schema for array items
@@ -213,6 +244,11 @@ func (a *arraySchema) ToOpenAPISchema() *goop.OpenAPISchema {
 	// Add default value for optional schemas
 	if a.defaultValue != nil {
 		schema.Default = a.defaultValue
+	}
+
+	// Add example information
+	if a.example != nil {
+		schema.Example = a.example
 	}
 
 	return schema
@@ -290,6 +326,19 @@ func (obj *objectSchema) ToOpenAPISchema() *goop.OpenAPISchema {
 		}
 	}
 
+	// Add property count constraints
+	if obj.minProperties > 0 {
+		schema.MinProperties = &obj.minProperties
+	}
+	if obj.maxProperties > 0 {
+		schema.MaxProperties = &obj.maxProperties
+	}
+
+	// Add example information
+	if obj.example != nil {
+		schema.Example = obj.example
+	}
+
 	return schema
 }
 
@@ -337,6 +386,11 @@ func (b *boolSchema) ToOpenAPISchema() *goop.OpenAPISchema {
 	// Add default value for optional schemas
 	if b.defaultValue != nil {
 		schema.Default = *b.defaultValue
+	}
+
+	// Add example information
+	if b.example != nil {
+		schema.Example = b.example
 	}
 
 	return schema

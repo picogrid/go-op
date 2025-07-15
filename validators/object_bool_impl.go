@@ -9,23 +9,31 @@ import (
 
 // Core object schema struct (unexported)
 type objectSchema struct {
-	schema       map[string]interface{}
-	strictMode   bool
-	partialMode  bool
-	customFunc   func(map[string]interface{}) error
-	required     bool
-	optional     bool
-	defaultValue map[string]interface{}
-	customError  map[string]string
+	schema        map[string]interface{}
+	strictMode    bool
+	partialMode   bool
+	minProperties int
+	maxProperties int
+	customFunc    func(map[string]interface{}) error
+	required      bool
+	optional      bool
+	defaultValue  map[string]interface{}
+	customError   map[string]string
+	example       interface{}
+	examples      map[string]ExampleObject
+	externalValue string
 }
 
 // Core bool schema struct (unexported)
 type boolSchema struct {
-	customFunc   func(bool) error
-	required     bool
-	optional     bool
-	defaultValue *bool
-	customError  map[string]string
+	customFunc    func(bool) error
+	required      bool
+	optional      bool
+	defaultValue  *bool
+	customError   map[string]string
+	example       interface{}
+	examples      map[string]ExampleObject
+	externalValue string
 }
 
 // State wrapper types for objects
@@ -54,6 +62,16 @@ func (o *objectSchema) Strict() ObjectBuilder {
 
 func (o *objectSchema) Partial() ObjectBuilder {
 	o.partialMode = true
+	return o
+}
+
+func (o *objectSchema) MinProperties(count int) ObjectBuilder {
+	o.minProperties = count
+	return o
+}
+
+func (o *objectSchema) MaxProperties(count int) ObjectBuilder {
+	o.maxProperties = count
 	return o
 }
 
@@ -93,6 +111,16 @@ func (r *requiredObjectSchema) Partial() RequiredObjectBuilder {
 	return r
 }
 
+func (r *requiredObjectSchema) MinProperties(count int) RequiredObjectBuilder {
+	r.minProperties = count
+	return r
+}
+
+func (r *requiredObjectSchema) MaxProperties(count int) RequiredObjectBuilder {
+	r.maxProperties = count
+	return r
+}
+
 func (r *requiredObjectSchema) Custom(fn func(map[string]interface{}) error) RequiredObjectBuilder {
 	r.customFunc = fn
 	return r
@@ -122,6 +150,16 @@ func (o *optionalObjectSchema) Strict() OptionalObjectBuilder {
 
 func (o *optionalObjectSchema) Partial() OptionalObjectBuilder {
 	o.partialMode = true
+	return o
+}
+
+func (o *optionalObjectSchema) MinProperties(count int) OptionalObjectBuilder {
+	o.minProperties = count
+	return o
+}
+
+func (o *optionalObjectSchema) MaxProperties(count int) OptionalObjectBuilder {
+	o.maxProperties = count
 	return o
 }
 
@@ -178,6 +216,20 @@ func (o *objectSchema) validate(data interface{}) error {
 	for _, key := range val.MapKeys() {
 		keyStr := fmt.Sprintf("%v", key.Interface())
 		obj[keyStr] = val.MapIndex(key).Interface()
+	}
+
+	// Properties count validation
+	propCount := len(obj)
+	if o.minProperties > 0 && propCount < o.minProperties {
+		return goop.NewValidationError(fmt.Sprintf("%v", obj), obj,
+			o.getErrorMessage(errorKeys.MinProperties,
+				fmt.Sprintf("object has too few properties, minimum is %d but got %d", o.minProperties, propCount)))
+	}
+
+	if o.maxProperties > 0 && propCount > o.maxProperties {
+		return goop.NewValidationError(fmt.Sprintf("%v", obj), obj,
+			o.getErrorMessage(errorKeys.MaxProperties,
+				fmt.Sprintf("object has too many properties, maximum is %d but got %d", o.maxProperties, propCount)))
 	}
 
 	// Strict mode: check for unknown keys
@@ -411,6 +463,102 @@ func (b *boolSchema) validate(data interface{}) error {
 	}
 
 	return nil
+}
+
+// Example methods for ObjectBuilder
+func (o *objectSchema) Example(value interface{}) ObjectBuilder {
+	o.example = value
+	return o
+}
+
+func (o *objectSchema) Examples(examples map[string]ExampleObject) ObjectBuilder {
+	o.examples = examples
+	return o
+}
+
+func (o *objectSchema) ExampleFromFile(path string) ObjectBuilder {
+	o.externalValue = path
+	return o
+}
+
+// Example methods for RequiredObjectBuilder
+func (r *requiredObjectSchema) Example(value interface{}) RequiredObjectBuilder {
+	r.example = value
+	return r
+}
+
+func (r *requiredObjectSchema) Examples(examples map[string]ExampleObject) RequiredObjectBuilder {
+	r.examples = examples
+	return r
+}
+
+func (r *requiredObjectSchema) ExampleFromFile(path string) RequiredObjectBuilder {
+	r.externalValue = path
+	return r
+}
+
+// Example methods for OptionalObjectBuilder
+func (o *optionalObjectSchema) Example(value interface{}) OptionalObjectBuilder {
+	o.example = value
+	return o
+}
+
+func (o *optionalObjectSchema) Examples(examples map[string]ExampleObject) OptionalObjectBuilder {
+	o.examples = examples
+	return o
+}
+
+func (o *optionalObjectSchema) ExampleFromFile(path string) OptionalObjectBuilder {
+	o.externalValue = path
+	return o
+}
+
+// Example methods for BoolBuilder
+func (b *boolSchema) Example(value interface{}) BoolBuilder {
+	b.example = value
+	return b
+}
+
+func (b *boolSchema) Examples(examples map[string]ExampleObject) BoolBuilder {
+	b.examples = examples
+	return b
+}
+
+func (b *boolSchema) ExampleFromFile(path string) BoolBuilder {
+	b.externalValue = path
+	return b
+}
+
+// Example methods for RequiredBoolBuilder
+func (r *requiredBoolSchema) Example(value interface{}) RequiredBoolBuilder {
+	r.example = value
+	return r
+}
+
+func (r *requiredBoolSchema) Examples(examples map[string]ExampleObject) RequiredBoolBuilder {
+	r.examples = examples
+	return r
+}
+
+func (r *requiredBoolSchema) ExampleFromFile(path string) RequiredBoolBuilder {
+	r.externalValue = path
+	return r
+}
+
+// Example methods for OptionalBoolBuilder
+func (o *optionalBoolSchema) Example(value interface{}) OptionalBoolBuilder {
+	o.example = value
+	return o
+}
+
+func (o *optionalBoolSchema) Examples(examples map[string]ExampleObject) OptionalBoolBuilder {
+	o.examples = examples
+	return o
+}
+
+func (o *optionalBoolSchema) ExampleFromFile(path string) OptionalBoolBuilder {
+	o.externalValue = path
+	return o
 }
 
 func (b *boolSchema) getErrorMessage(validationType, defaultMessage string) string {
