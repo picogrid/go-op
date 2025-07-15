@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	goop "github.com/picogrid/go-op"
@@ -88,6 +89,20 @@ type OpenAPILicense struct {
 	URL        string `json:"url,omitempty" yaml:"url,omitempty"`
 }
 
+// Validate validates the OpenAPI license object according to OpenAPI 3.1 rules
+func (l *OpenAPILicense) Validate() error {
+	if l.Name == "" {
+		return fmt.Errorf("license name is required")
+	}
+
+	// identifier and url are mutually exclusive
+	if l.Identifier != "" && l.URL != "" {
+		return fmt.Errorf("license identifier and url are mutually exclusive")
+	}
+
+	return nil
+}
+
 // OpenAPIOperation represents a single operation in OpenAPI spec
 type OpenAPIOperation struct {
 	Summary      string                     `json:"summary,omitempty" yaml:"summary,omitempty"`
@@ -96,7 +111,9 @@ type OpenAPIOperation struct {
 	Parameters   []OpenAPIParameter         `json:"parameters,omitempty" yaml:"parameters,omitempty"`
 	RequestBody  *OpenAPIRequestBody        `json:"requestBody,omitempty" yaml:"requestBody,omitempty"`
 	Responses    map[string]OpenAPIResponse `json:"responses" yaml:"responses"`
+	Callbacks    map[string]OpenAPICallback `json:"callbacks,omitempty" yaml:"callbacks,omitempty"`
 	Security     []goop.SecurityRequirement `json:"security,omitempty" yaml:"security,omitempty"`
+	Servers      []OpenAPIServer            `json:"servers,omitempty" yaml:"servers,omitempty"`
 	OperationId  string                     `json:"operationId,omitempty" yaml:"operationId,omitempty"`
 	Deprecated   *bool                      `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
 	ExternalDocs *OpenAPIExternalDocs       `json:"externalDocs,omitempty" yaml:"externalDocs,omitempty"`
@@ -158,6 +175,15 @@ type OpenAPIMediaType struct {
 	Encoding map[string]OpenAPIEncoding `json:"encoding,omitempty" yaml:"encoding,omitempty"`
 }
 
+// Validate validates the OpenAPI media type object according to OpenAPI 3.1 rules
+func (m *OpenAPIMediaType) Validate() error {
+	// example and examples are mutually exclusive
+	if m.Example != nil && len(m.Examples) > 0 {
+		return fmt.Errorf("example and examples are mutually exclusive")
+	}
+	return nil
+}
+
 // OpenAPIComponents represents the components section of OpenAPI spec
 type OpenAPIComponents struct {
 	Schemas         map[string]*goop.OpenAPISchema       `json:"schemas,omitempty" yaml:"schemas,omitempty"`
@@ -167,6 +193,9 @@ type OpenAPIComponents struct {
 	Examples        map[string]OpenAPIExample            `json:"examples,omitempty" yaml:"examples,omitempty"`
 	RequestBodies   map[string]OpenAPIRequestBody        `json:"requestBodies,omitempty" yaml:"requestBodies,omitempty"`
 	Headers         map[string]OpenAPIHeader             `json:"headers,omitempty" yaml:"headers,omitempty"`
+	Links           map[string]OpenAPILink               `json:"links,omitempty" yaml:"links,omitempty"`
+	Callbacks       map[string]OpenAPICallback           `json:"callbacks,omitempty" yaml:"callbacks,omitempty"`
+	PathItems       map[string]OpenAPIPathItem           `json:"pathItems,omitempty" yaml:"pathItems,omitempty"`
 }
 
 // OpenAPIExample represents an example in OpenAPI spec
@@ -196,6 +225,26 @@ type OpenAPIHeader struct {
 	Examples    map[string]OpenAPIExample `json:"examples,omitempty" yaml:"examples,omitempty"`
 }
 
+// OpenAPICallback represents a callback in OpenAPI spec
+type OpenAPICallback map[string]OpenAPIPathItem
+
+// OpenAPIPathItem represents a path item in OpenAPI spec
+type OpenAPIPathItem struct {
+	Ref         string             `json:"$ref,omitempty" yaml:"$ref,omitempty"`
+	Summary     string             `json:"summary,omitempty" yaml:"summary,omitempty"`
+	Description string             `json:"description,omitempty" yaml:"description,omitempty"`
+	Get         *OpenAPIOperation  `json:"get,omitempty" yaml:"get,omitempty"`
+	Put         *OpenAPIOperation  `json:"put,omitempty" yaml:"put,omitempty"`
+	Post        *OpenAPIOperation  `json:"post,omitempty" yaml:"post,omitempty"`
+	Delete      *OpenAPIOperation  `json:"delete,omitempty" yaml:"delete,omitempty"`
+	Options     *OpenAPIOperation  `json:"options,omitempty" yaml:"options,omitempty"`
+	Head        *OpenAPIOperation  `json:"head,omitempty" yaml:"head,omitempty"`
+	Patch       *OpenAPIOperation  `json:"patch,omitempty" yaml:"patch,omitempty"`
+	Trace       *OpenAPIOperation  `json:"trace,omitempty" yaml:"trace,omitempty"`
+	Servers     []OpenAPIServer    `json:"servers,omitempty" yaml:"servers,omitempty"`
+	Parameters  []OpenAPIParameter `json:"parameters,omitempty" yaml:"parameters,omitempty"`
+}
+
 // NewOpenAPIGenerator creates a new OpenAPI generator
 func NewOpenAPIGenerator(title, version string) *OpenAPIGenerator {
 	return &OpenAPIGenerator{
@@ -217,6 +266,9 @@ func NewOpenAPIGenerator(title, version string) *OpenAPIGenerator {
 				Examples:        make(map[string]OpenAPIExample),
 				RequestBodies:   make(map[string]OpenAPIRequestBody),
 				Headers:         make(map[string]OpenAPIHeader),
+				Links:           make(map[string]OpenAPILink),
+				Callbacks:       make(map[string]OpenAPICallback),
+				PathItems:       make(map[string]OpenAPIPathItem),
 			},
 		},
 	}
@@ -244,8 +296,14 @@ func (g *OpenAPIGenerator) SetContact(contact *OpenAPIContact) {
 }
 
 // SetLicense sets the API license information
-func (g *OpenAPIGenerator) SetLicense(license *OpenAPILicense) {
+func (g *OpenAPIGenerator) SetLicense(license *OpenAPILicense) error {
+	if license != nil {
+		if err := license.Validate(); err != nil {
+			return fmt.Errorf("invalid license: %v", err)
+		}
+	}
 	g.Spec.Info.License = license
+	return nil
 }
 
 // AddServer adds a server to the OpenAPI specification
@@ -538,6 +596,19 @@ func (g *OpenAPIGenerator) WriteToWriter(w io.Writer) error {
 	encoder.SetIndent("", "  ")
 	if err := encoder.Encode(g.Spec); err != nil {
 		return fmt.Errorf("failed to encode OpenAPI spec: %w", err)
+	}
+	return nil
+}
+
+// ValidateComponentKey validates that a component key follows OpenAPI 3.1 rules
+func ValidateComponentKey(key string) error {
+	// Component keys must match the regex: ^[a-zA-Z0-9\.\-_]+$
+	matched, err := regexp.MatchString(`^[a-zA-Z0-9\.\-_]+$`, key)
+	if err != nil {
+		return fmt.Errorf("regex error: %v", err)
+	}
+	if !matched {
+		return fmt.Errorf("component key '%s' must match pattern ^[a-zA-Z0-9\\.\\-_]+$", key)
 	}
 	return nil
 }

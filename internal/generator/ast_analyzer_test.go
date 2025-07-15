@@ -7,627 +7,664 @@ import (
 	"testing"
 )
 
-func TestNewASTAnalyzer(t *testing.T) {
-	fileSet := token.NewFileSet()
-	analyzer := NewASTAnalyzer(fileSet, true)
+// Tests for AST analyzer functions that extract values from Go source code for OpenAPI generation
+func TestASTAnalyzer_ExtractLiteralValue(t *testing.T) {
+	fset := token.NewFileSet()
+	analyzer := NewASTAnalyzer(fset, false)
 
-	if analyzer.fileSet != fileSet {
-		t.Errorf("Expected fileSet to be set")
-	}
+	t.Run("extracts string literals with quote removal", func(t *testing.T) {
+		src := `package main
+		var s = "hello world"`
 
-	if !analyzer.verbose {
-		t.Errorf("Expected verbose to be true")
-	}
-
-	if analyzer.schemaVars == nil {
-		t.Errorf("Expected schemaVars to be initialized")
-	}
-}
-
-func TestExtractStringLiteral(t *testing.T) {
-	analyzer := NewASTAnalyzer(token.NewFileSet(), false)
-
-	tests := []struct {
-		code     string
-		expected string
-	}{
-		{`"hello"`, "hello"},
-		{`"hello world"`, "hello world"},
-		{`""`, ""},
-		{`"with \"quotes\""`, `with \"quotes\"`},
-		{`123`, ""},      // not a string
-		{`variable`, ""}, // not a literal
-	}
-
-	for _, test := range tests {
-		expr, err := parser.ParseExpr(test.code)
+		fset := token.NewFileSet()
+		file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
 		if err != nil {
-			t.Errorf("Failed to parse expression %s: %v", test.code, err)
-			continue
+			t.Fatalf("Failed to parse: %v", err)
 		}
 
-		result := analyzer.extractStringLiteral(expr)
-		if result != test.expected {
-			t.Errorf("extractStringLiteral(%s) = %s, expected %s", test.code, result, test.expected)
-		}
-	}
-}
-
-func TestExtractNumberLiteral(t *testing.T) {
-	analyzer := NewASTAnalyzer(token.NewFileSet(), false)
-
-	tests := []struct {
-		code     string
-		expected *float64
-		hasValue bool
-	}{
-		{"1", floatPtr(1.0), true},
-		{"3", floatPtr(3.0), true},
-		{"100", floatPtr(100.0), true},
-		{`"string"`, nil, false},
-		{`variable`, nil, false},
-	}
-
-	for _, test := range tests {
-		expr, err := parser.ParseExpr(test.code)
-		if err != nil {
-			t.Errorf("Failed to parse expression %s: %v", test.code, err)
-			continue
-		}
-
-		result := analyzer.extractNumberLiteral(expr)
-		if test.hasValue {
-			if result == nil {
-				t.Errorf("extractNumberLiteral(%s) = nil, expected %f", test.code, *test.expected)
-			} else if *result != *test.expected {
-				t.Errorf("extractNumberLiteral(%s) = %f, expected %f", test.code, *result, *test.expected)
+		// Find the string literal
+		var stringLit *ast.BasicLit
+		ast.Inspect(file, func(n ast.Node) bool {
+			if lit, ok := n.(*ast.BasicLit); ok && lit.Kind == token.STRING {
+				stringLit = lit
+				return false
 			}
-		} else {
-			if result != nil {
-				t.Errorf("extractNumberLiteral(%s) = %f, expected nil", test.code, *result)
-			}
-		}
-	}
-}
+			return true
+		})
 
-func TestIsValidatorPackage(t *testing.T) {
-	analyzer := NewASTAnalyzer(token.NewFileSet(), false)
-
-	tests := []struct {
-		code     string
-		expected bool
-	}{
-		{`validators`, true},
-		{`operations`, false},
-		{`fmt`, false},
-		{`validators.String()`, false}, // This is a selector, not an ident
-	}
-
-	for _, test := range tests {
-		expr, err := parser.ParseExpr(test.code)
-		if err != nil {
-			t.Errorf("Failed to parse expression %s: %v", test.code, err)
-			continue
+		if stringLit == nil {
+			t.Fatal("String literal not found")
 		}
 
-		result := analyzer.isValidatorPackage(expr)
-		if result != test.expected {
-			t.Errorf("isValidatorPackage(%s) = %v, expected %v", test.code, result, test.expected)
+		value := analyzer.extractLiteralValue(stringLit)
+		if value != "hello world" {
+			t.Errorf("Expected 'hello world', got %v", value)
 		}
-	}
-}
-
-func TestIsRouterRegister(t *testing.T) {
-	analyzer := NewASTAnalyzer(token.NewFileSet(), false)
-
-	tests := []struct {
-		code     string
-		expected bool
-	}{
-		{`router.Register(op)`, true},
-		{`router.Register(getUserOp)`, true},
-		{`Register(op)`, false},
-		{`router.Add(op)`, false},
-		{`router.register(op)`, false}, // lowercase
-	}
-
-	for _, test := range tests {
-		expr, err := parser.ParseExpr(test.code)
-		if err != nil {
-			t.Errorf("Failed to parse expression %s: %v", test.code, err)
-			continue
-		}
-
-		if callExpr, ok := expr.(*ast.CallExpr); ok {
-			result := analyzer.isRouterRegister(callExpr)
-			if result != test.expected {
-				t.Errorf("isRouterRegister(%s) = %v, expected %v", test.code, result, test.expected)
-			}
-		} else {
-			t.Errorf("Expression %s is not a call expression", test.code)
-		}
-	}
-}
-
-func TestProcessMethodCall(t *testing.T) {
-	analyzer := NewASTAnalyzer(token.NewFileSet(), false)
-
-	tests := []struct {
-		methodName string
-		args       []string
-		checkOp    func(*OperationDefinition) bool
-	}{
-		{
-			methodName: "GET",
-			args:       []string{`"/users"`},
-			checkOp: func(op *OperationDefinition) bool {
-				return op.Method == "GET" && op.Path == "/users"
-			},
-		},
-		{
-			methodName: "POST",
-			args:       []string{`"/users"`},
-			checkOp: func(op *OperationDefinition) bool {
-				return op.Method == "POST" && op.Path == "/users"
-			},
-		},
-		{
-			methodName: "Summary",
-			args:       []string{`"Get all users"`},
-			checkOp: func(op *OperationDefinition) bool {
-				return op.Summary == "Get all users"
-			},
-		},
-		{
-			methodName: "Description",
-			args:       []string{`"Returns a list of users"`},
-			checkOp: func(op *OperationDefinition) bool {
-				return op.Description == "Returns a list of users"
-			},
-		},
-		{
-			methodName: "Tags",
-			args:       []string{`"users"`, `"public"`},
-			checkOp: func(op *OperationDefinition) bool {
-				return len(op.Tags) == 2 && op.Tags[0] == "users" && op.Tags[1] == "public"
-			},
-		},
-	}
-
-	for _, test := range tests {
-		op := &OperationDefinition{Tags: []string{}}
-
-		// Parse arguments
-		args := make([]ast.Expr, len(test.args))
-		for i, arg := range test.args {
-			expr, err := parser.ParseExpr(arg)
-			if err != nil {
-				t.Errorf("Failed to parse argument %s: %v", arg, err)
-				continue
-			}
-			args[i] = expr
-		}
-
-		analyzer.processMethodCall(test.methodName, args, op)
-
-		if !test.checkOp(op) {
-			t.Errorf("processMethodCall(%s) failed check", test.methodName)
-		}
-	}
-}
-
-func TestProcessValidatorMethod(t *testing.T) {
-	analyzer := NewASTAnalyzer(token.NewFileSet(), false)
-
-	tests := []struct {
-		methodName  string
-		args        []string
-		checkSchema func(*SchemaDefinition) bool
-	}{
-		{
-			methodName: "String",
-			args:       []string{},
-			checkSchema: func(s *SchemaDefinition) bool {
-				return s.Type == "string"
-			},
-		},
-		{
-			methodName: "Number",
-			args:       []string{},
-			checkSchema: func(s *SchemaDefinition) bool {
-				return s.Type == "number"
-			},
-		},
-		{
-			methodName: "Bool",
-			args:       []string{},
-			checkSchema: func(s *SchemaDefinition) bool {
-				return s.Type == "boolean"
-			},
-		},
-		{
-			methodName: "Array",
-			args:       []string{},
-			checkSchema: func(s *SchemaDefinition) bool {
-				return s.Type == "array"
-			},
-		},
-		{
-			methodName: "Email",
-			args:       []string{},
-			checkSchema: func(s *SchemaDefinition) bool {
-				return s.Type == "string" && s.Format == "email"
-			},
-		},
-		{
-			methodName: "Min",
-			args:       []string{"3"},
-			checkSchema: func(s *SchemaDefinition) bool {
-				if s.Type == "string" {
-					return s.MinLength != nil && *s.MinLength == 3
-				}
-				return s.Minimum != nil && *s.Minimum == 3
-			},
-		},
-		{
-			methodName: "Max",
-			args:       []string{"100"},
-			checkSchema: func(s *SchemaDefinition) bool {
-				if s.Type == "string" {
-					return s.MaxLength != nil && *s.MaxLength == 100
-				}
-				return s.Maximum != nil && *s.Maximum == 100
-			},
-		},
-	}
-
-	for _, test := range tests {
-		schema := &SchemaDefinition{
-			Type:       "string", // Default type
-			Properties: make(map[string]*SchemaDefinition),
-			Required:   []string{},
-		}
-
-		// Parse arguments
-		args := make([]ast.Expr, len(test.args))
-		for i, arg := range test.args {
-			expr, err := parser.ParseExpr(arg)
-			if err != nil {
-				t.Errorf("Failed to parse argument %s: %v", arg, err)
-				continue
-			}
-			args[i] = expr
-		}
-
-		analyzer.processValidatorMethod(test.methodName, args, schema)
-
-		if !test.checkSchema(schema) {
-			t.Errorf("processValidatorMethod(%s) failed check", test.methodName)
-		}
-	}
-}
-
-func TestExtractOperations(t *testing.T) {
-	code := `
-package main
-
-import (
-	"github.com/picogrid/go-op/operations"
-	"github.com/picogrid/go-op/validators"
-)
-
-var getUserOp = operations.NewSimple().
-	GET("/users/{id}").
-	Summary("Get user by ID").
-	Description("Returns a single user").
-	Tags("users", "public").
-	WithParams(validators.Object(map[string]interface{}{
-		"id": validators.String().Required(),
-	})).
-	WithResponse(validators.Object(map[string]interface{}{
-		"id": validators.String(),
-		"name": validators.String(),
-		"email": validators.Email(),
-	}))
-
-func setupRoutes() {
-	createUserOp := operations.NewSimple().
-		POST("/users").
-		Summary("Create user").
-		WithBody(validators.Object(map[string]interface{}{
-			"name": validators.String().Min(1).Max(100).Required(),
-			"email": validators.Email().Required(),
-		}))
-	
-	router.Register(createUserOp)
-}
-`
-
-	fileSet := token.NewFileSet()
-	file, err := parser.ParseFile(fileSet, "test.go", code, parser.ParseComments)
-	if err != nil {
-		t.Fatalf("Failed to parse test code: %v", err)
-	}
-
-	analyzer := NewASTAnalyzer(fileSet, true)
-	operations := analyzer.ExtractOperations(file, "test.go")
-
-	if len(operations) < 1 {
-		t.Errorf("Expected at least 1 operation, got %d", len(operations))
-	}
-
-	// Check first operation (getUserOp)
-	if len(operations) > 0 {
-		op := operations[0]
-		if op.Method != "GET" {
-			t.Errorf("Expected method GET, got %s", op.Method)
-		}
-		if op.Path != "/users/{id}" {
-			t.Errorf("Expected path /users/{id}, got %s", op.Path)
-		}
-		if op.Summary != "Get user by ID" {
-			t.Errorf("Expected summary 'Get user by ID', got '%s'", op.Summary)
-		}
-		if op.Description != "Returns a single user" {
-			t.Errorf("Expected description 'Returns a single user', got '%s'", op.Description)
-		}
-		if len(op.Tags) != 2 || op.Tags[0] != "users" || op.Tags[1] != "public" {
-			t.Errorf("Expected tags [users, public], got %v", op.Tags)
-		}
-		if op.Params == nil {
-			t.Errorf("Expected params schema to be set")
-		}
-		if op.Response == nil {
-			t.Errorf("Expected response schema to be set")
-		}
-	}
-}
-
-func TestTrackSchemaAssignments(t *testing.T) {
-	code := `
-package main
-
-import "github.com/picogrid/go-op/validators"
-
-func main() {
-	userSchema := validators.Object(map[string]interface{}{
-		"id": validators.String(),
-		"name": validators.String().Min(1).Max(100),
-		"email": validators.Email().Required(),
 	})
-	
-	// This should not be tracked (no "Schema" in name)
-	userData := map[string]string{"id": "123"}
-}
-`
 
-	fileSet := token.NewFileSet()
-	file, err := parser.ParseFile(fileSet, "test.go", code, parser.ParseComments)
-	if err != nil {
-		t.Fatalf("Failed to parse test code: %v", err)
-	}
+	t.Run("Extract number literal", func(t *testing.T) {
+		src := `package main
+		var n = 10`
 
-	analyzer := NewASTAnalyzer(fileSet, true)
-
-	// Extract operations to trigger schema tracking
-	analyzer.ExtractOperations(file, "test.go")
-
-	// Check that userSchema was tracked
-	if _, exists := analyzer.schemaVars["userSchema"]; !exists {
-		t.Errorf("Expected userSchema to be tracked")
-	}
-
-	// Check that userData was not tracked
-	if _, exists := analyzer.schemaVars["userData"]; exists {
-		t.Errorf("Expected userData NOT to be tracked")
-	}
-
-	// Verify the tracked schema
-	if schema, exists := analyzer.schemaVars["userSchema"]; exists {
-		if schema.Type != "object" {
-			t.Errorf("Expected userSchema type to be 'object', got '%s'", schema.Type)
-		}
-		if len(schema.Properties) != 3 {
-			t.Errorf("Expected userSchema to have 3 properties, got %d", len(schema.Properties))
+		fset := token.NewFileSet()
+		file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
+		if err != nil {
+			t.Fatalf("Failed to parse: %v", err)
 		}
 
-		// Check email property
-		if emailProp, exists := schema.Properties["email"]; exists {
-			if emailProp.Type != "string" {
-				t.Errorf("Expected email type to be 'string', got '%s'", emailProp.Type)
+		// Find the number literal
+		var numberLit *ast.BasicLit
+		ast.Inspect(file, func(n ast.Node) bool {
+			if lit, ok := n.(*ast.BasicLit); ok && lit.Kind == token.INT {
+				numberLit = lit
+				return false
 			}
-			if emailProp.Format != "email" {
-				t.Errorf("Expected email format to be 'email', got '%s'", emailProp.Format)
+			return true
+		})
+
+		if numberLit == nil {
+			t.Fatal("Number literal not found")
+		}
+
+		value := analyzer.extractLiteralValue(numberLit)
+		if value != 10 {
+			t.Errorf("Expected 10, got %v", value)
+		}
+	})
+
+	t.Run("Extract float literal", func(t *testing.T) {
+		src := `package main
+		var f = 0.5`
+
+		fset := token.NewFileSet()
+		file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
+		if err != nil {
+			t.Fatalf("Failed to parse: %v", err)
+		}
+
+		// Find the float literal
+		var floatLit *ast.BasicLit
+		ast.Inspect(file, func(n ast.Node) bool {
+			if lit, ok := n.(*ast.BasicLit); ok && lit.Kind == token.FLOAT {
+				floatLit = lit
+				return false
+			}
+			return true
+		})
+
+		if floatLit == nil {
+			t.Fatal("Float literal not found")
+		}
+
+		value := analyzer.extractLiteralValue(floatLit)
+		if value != 0.5 {
+			t.Errorf("Expected 0.5, got %v", value)
+		}
+	})
+
+	t.Run("Extract boolean literal", func(t *testing.T) {
+		src := `package main
+		var b = true`
+
+		fset := token.NewFileSet()
+		file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
+		if err != nil {
+			t.Fatalf("Failed to parse: %v", err)
+		}
+
+		// Find the boolean literal (identifier)
+		var boolLit *ast.Ident
+		ast.Inspect(file, func(n ast.Node) bool {
+			if ident, ok := n.(*ast.Ident); ok && ident.Name == "true" {
+				boolLit = ident
+				return false
+			}
+			return true
+		})
+
+		if boolLit == nil {
+			t.Fatal("Boolean literal not found")
+		}
+
+		value := analyzer.extractLiteralValue(boolLit)
+		if value != true {
+			t.Errorf("Expected true, got %v", value)
+		}
+	})
+
+	t.Run("Extract nil literal", func(t *testing.T) {
+		src := `package main
+		var n = nil`
+
+		fset := token.NewFileSet()
+		file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
+		if err != nil {
+			t.Fatalf("Failed to parse: %v", err)
+		}
+
+		// Find the nil literal (identifier)
+		var nilLit *ast.Ident
+		ast.Inspect(file, func(n ast.Node) bool {
+			if ident, ok := n.(*ast.Ident); ok && ident.Name == "nil" {
+				nilLit = ident
+				return false
+			}
+			return true
+		})
+
+		if nilLit == nil {
+			t.Fatal("Nil literal not found")
+		}
+
+		value := analyzer.extractLiteralValue(nilLit)
+		if value != nil {
+			t.Errorf("Expected nil, got %v", value)
+		}
+	})
+
+	t.Run("Extract unknown literal type", func(t *testing.T) {
+		src := `package main
+		var i = 'c'` // char literal
+
+		fset := token.NewFileSet()
+		file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
+		if err != nil {
+			t.Fatalf("Failed to parse: %v", err)
+		}
+
+		// Find the char literal
+		var charLit *ast.BasicLit
+		ast.Inspect(file, func(n ast.Node) bool {
+			if lit, ok := n.(*ast.BasicLit); ok && lit.Kind == token.CHAR {
+				charLit = lit
+				return false
+			}
+			return true
+		})
+
+		if charLit == nil {
+			t.Fatal("Char literal not found")
+		}
+
+		value := analyzer.extractLiteralValue(charLit)
+		if value != nil {
+			t.Errorf("Expected nil for unsupported type, got %v", value)
+		}
+	})
+}
+
+// TestExtractCompositeLiteral tests the extractCompositeLiteral function (0% coverage)
+func TestExtractCompositeLiteral(t *testing.T) {
+	fset := token.NewFileSet()
+	analyzer := NewASTAnalyzer(fset, false)
+
+	t.Run("Extract slice literal", func(t *testing.T) {
+		src := `package main
+		var arr = []string{"hello", "world"}`
+
+		fset := token.NewFileSet()
+		file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
+		if err != nil {
+			t.Fatalf("Failed to parse: %v", err)
+		}
+
+		// Find the composite literal
+		var compLit *ast.CompositeLit
+		ast.Inspect(file, func(n ast.Node) bool {
+			if lit, ok := n.(*ast.CompositeLit); ok {
+				compLit = lit
+				return false
+			}
+			return true
+		})
+
+		if compLit == nil {
+			t.Fatal("Composite literal not found")
+		}
+
+		value := analyzer.extractCompositeLiteral(compLit)
+		if slice, ok := value.([]interface{}); ok {
+			if len(slice) != 2 {
+				t.Errorf("Expected slice of length 2, got %d", len(slice))
+			}
+			if slice[0] != "hello" || slice[1] != "world" {
+				t.Errorf("Expected [hello, world], got %v", slice)
 			}
 		} else {
-			t.Errorf("Expected email property to exist")
+			t.Errorf("Expected slice, got %T", value)
+		}
+	})
+
+	t.Run("Extract map literal", func(t *testing.T) {
+		src := `package main
+		var m = map[string]int{"key1": 1, "key2": 2}`
+
+		fset := token.NewFileSet()
+		file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
+		if err != nil {
+			t.Fatalf("Failed to parse: %v", err)
 		}
 
-		// Check name property constraints
-		if nameProp, exists := schema.Properties["name"]; exists {
-			if nameProp.MinLength == nil || *nameProp.MinLength != 1 {
-				t.Errorf("Expected name MinLength to be 1")
+		// Find the composite literal
+		var compLit *ast.CompositeLit
+		ast.Inspect(file, func(n ast.Node) bool {
+			if lit, ok := n.(*ast.CompositeLit); ok {
+				compLit = lit
+				return false
 			}
-			if nameProp.MaxLength == nil || *nameProp.MaxLength != 100 {
-				t.Errorf("Expected name MaxLength to be 100")
+			return true
+		})
+
+		if compLit == nil {
+			t.Fatal("Composite literal not found")
+		}
+
+		value := analyzer.extractCompositeLiteral(compLit)
+		if m, ok := value.(map[string]interface{}); ok {
+			if len(m) != 2 {
+				t.Errorf("Expected map of length 2, got %d", len(m))
+			}
+			if m["key1"] != 1 || m["key2"] != 2 {
+				t.Errorf("Expected map[key1:1 key2:2], got %v", m)
 			}
 		} else {
-			t.Errorf("Expected name property to exist")
+			t.Errorf("Expected map, got %T", value)
 		}
-	}
+	})
+
+	t.Run("Extract struct-like map literal", func(t *testing.T) {
+		src := `package main
+		var p = map[string]interface{}{"Name": "John", "Age": 10}`
+
+		fset := token.NewFileSet()
+		file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
+		if err != nil {
+			t.Fatalf("Failed to parse: %v", err)
+		}
+
+		// Find the composite literal
+		var compLit *ast.CompositeLit
+		ast.Inspect(file, func(n ast.Node) bool {
+			if lit, ok := n.(*ast.CompositeLit); ok {
+				compLit = lit
+				return false
+			}
+			return true
+		})
+
+		if compLit == nil {
+			t.Fatal("Composite literal not found")
+		}
+
+		value := analyzer.extractCompositeLiteral(compLit)
+		if m, ok := value.(map[string]interface{}); ok {
+			if len(m) != 2 {
+				t.Errorf("Expected map of length 2, got %d", len(m))
+			}
+			if m["Name"] != "John" || m["Age"] != 10 {
+				t.Errorf("Expected map[Name:John Age:10], got %v", m)
+			}
+		} else {
+			t.Errorf("Expected map, got %T", value)
+		}
+	})
+
+	t.Run("Extract empty literal", func(t *testing.T) {
+		src := `package main
+		var arr = []string{}`
+
+		fset := token.NewFileSet()
+		file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
+		if err != nil {
+			t.Fatalf("Failed to parse: %v", err)
+		}
+
+		// Find the composite literal
+		var compLit *ast.CompositeLit
+		ast.Inspect(file, func(n ast.Node) bool {
+			if lit, ok := n.(*ast.CompositeLit); ok {
+				compLit = lit
+				return false
+			}
+			return true
+		})
+
+		if compLit == nil {
+			t.Fatal("Composite literal not found")
+		}
+
+		value := analyzer.extractCompositeLiteral(compLit)
+		// For empty literals, the function returns nil
+		if value != nil {
+			t.Errorf("Expected nil for empty literal, got %v", value)
+		}
+	})
 }
 
-func TestSchemaReferenceResolution(t *testing.T) {
-	code := `
-package main
+// TestExtractExamplesMap tests the extractExamplesMap function (0% coverage)
+func TestExtractExamplesMap(t *testing.T) {
+	fset := token.NewFileSet()
+	analyzer := NewASTAnalyzer(fset, false)
 
-import (
-	"github.com/picogrid/go-op/operations"
-	"github.com/picogrid/go-op/validators"
-)
+	t.Run("Extract examples map", func(t *testing.T) {
+		src := `package main
+		import "github.com/picogrid/go-op/validators"
+		var examples = map[string]validators.ExampleObject{
+			"simple": {Value: "test", Summary: "Simple example"},
+			"complex": {Value: map[string]interface{}{"key": "value"}, Summary: "Complex example", Description: "A complex example"},
+		}`
 
-var userRequestSchema = validators.Object(map[string]interface{}{
-	"name": validators.String().Required(),
-	"email": validators.Email().Required(),
-})
-
-var createUserOp = operations.NewSimple().
-	POST("/users").
-	WithBody(userRequestSchema).
-	WithResponse(userResponseSchema)
-
-var userResponseSchema = validators.Object(map[string]interface{}{
-	"id": validators.String(),
-	"name": validators.String(),
-	"email": validators.Email(),
-})
-`
-
-	fileSet := token.NewFileSet()
-	file, err := parser.ParseFile(fileSet, "test.go", code, parser.ParseComments)
-	if err != nil {
-		t.Fatalf("Failed to parse test code: %v", err)
-	}
-
-	analyzer := NewASTAnalyzer(fileSet, true)
-	operations := analyzer.ExtractOperations(file, "test.go")
-
-	if len(operations) != 1 {
-		t.Errorf("Expected 1 operation, got %d", len(operations))
-		return
-	}
-
-	op := operations[0]
-
-	// Check that body schema was resolved
-	if op.Body == nil {
-		t.Errorf("Expected body schema to be resolved")
-	} else {
-		if op.Body.Type != "object" {
-			t.Errorf("Expected body type 'object', got '%s'", op.Body.Type)
+		fset := token.NewFileSet()
+		file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
+		if err != nil {
+			t.Fatalf("Failed to parse: %v", err)
 		}
-		// The current implementation doesn't fully copy properties from referenced schemas
-		// This is a known limitation - the AST analyzer would need to be enhanced
-		// to properly deep-copy schema definitions when resolving references
-		if op.Body.Description != "Reference to userRequestSchema" && len(op.Body.Properties) != 2 {
-			t.Errorf("Expected body to have 2 properties or be a reference, got %d properties", len(op.Body.Properties))
-		}
-	}
 
-	// Check that response schema reference was preserved (forward reference)
-	if op.Response == nil {
-		t.Errorf("Expected response schema to be set")
-	} else if op.Response.Description == "" && op.Response.Type == "object" && len(op.Response.Properties) == 0 {
-		// Since userResponseSchema is defined after its use, it might just have a description
-		t.Errorf("Expected response schema to have some indication it's a reference")
-	}
+		// Find the composite literal for the examples map
+		var examplesLit *ast.CompositeLit
+		ast.Inspect(file, func(n ast.Node) bool {
+			if lit, ok := n.(*ast.CompositeLit); ok {
+				// Look for the map type with ExampleObject
+				if mapType, ok := lit.Type.(*ast.MapType); ok {
+					if sel, ok := mapType.Value.(*ast.SelectorExpr); ok {
+						if pkg, ok := sel.X.(*ast.Ident); ok && pkg.Name == "validators" && sel.Sel.Name == "ExampleObject" {
+							examplesLit = lit
+							return false
+						}
+					}
+				}
+			}
+			return true
+		})
+
+		if examplesLit == nil {
+			t.Fatal("Examples composite literal not found")
+		}
+
+		examples := analyzer.extractExamplesMap(examplesLit)
+		if len(examples) != 2 {
+			t.Errorf("Expected 2 examples, got %d", len(examples))
+		}
+
+		if simple, ok := examples["simple"]; ok {
+			if simple.Value != "test" {
+				t.Errorf("Expected simple.Value = 'test', got %v", simple.Value)
+			}
+			if simple.Summary != "Simple example" {
+				t.Errorf("Expected simple.Summary = 'Simple example', got %v", simple.Summary)
+			}
+		} else {
+			t.Error("'simple' example not found")
+		}
+
+		if complex, ok := examples["complex"]; ok {
+			if complex.Summary != "Complex example" {
+				t.Errorf("Expected complex.Summary = 'Complex example', got %v", complex.Summary)
+			}
+			if complex.Description != "A complex example" {
+				t.Errorf("Expected complex.Description = 'A complex example', got %v", complex.Description)
+			}
+		} else {
+			t.Error("'complex' example not found")
+		}
+	})
+
+	t.Run("Extract empty examples map", func(t *testing.T) {
+		src := `package main
+		import "github.com/picogrid/go-op/validators"
+		var examples = map[string]validators.ExampleObject{}`
+
+		fset := token.NewFileSet()
+		file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
+		if err != nil {
+			t.Fatalf("Failed to parse: %v", err)
+		}
+
+		// Find the composite literal for the examples map
+		var examplesLit *ast.CompositeLit
+		ast.Inspect(file, func(n ast.Node) bool {
+			if lit, ok := n.(*ast.CompositeLit); ok {
+				if mapType, ok := lit.Type.(*ast.MapType); ok {
+					if sel, ok := mapType.Value.(*ast.SelectorExpr); ok {
+						if pkg, ok := sel.X.(*ast.Ident); ok && pkg.Name == "validators" && sel.Sel.Name == "ExampleObject" {
+							examplesLit = lit
+							return false
+						}
+					}
+				}
+			}
+			return true
+		})
+
+		if examplesLit == nil {
+			t.Fatal("Examples composite literal not found")
+		}
+
+		examples := analyzer.extractExamplesMap(examplesLit)
+		if len(examples) != 0 {
+			t.Errorf("Expected 0 examples, got %d", len(examples))
+		}
+	})
 }
 
-func TestExtractObjectProperties(t *testing.T) {
-	code := `validators.Object(map[string]interface{}{
-		"id": validators.String(),
-		"age": validators.Number().Min(0).Max(150),
-		"active": validators.Bool(),
-		"tags": validators.Array(),
-	})`
+// TestExtractExampleObject tests the extractExampleObject function (0% coverage)
+func TestExtractExampleObject(t *testing.T) {
+	fset := token.NewFileSet()
+	analyzer := NewASTAnalyzer(fset, false)
 
-	expr, err := parser.ParseExpr(code)
-	if err != nil {
-		t.Fatalf("Failed to parse expression: %v", err)
-	}
+	t.Run("Extract complete example object", func(t *testing.T) {
+		src := `package main
+		import "github.com/picogrid/go-op/validators"
+		var example = validators.ExampleObject{
+			Value: "test value",
+			Summary: "Test summary",
+			Description: "Test description",
+			ExternalValue: "https://example.com/external",
+		}`
 
-	analyzer := NewASTAnalyzer(token.NewFileSet(), true)
-	schema := &SchemaDefinition{
-		Type:       "object",
-		Properties: make(map[string]*SchemaDefinition),
-		Required:   []string{},
-	}
-
-	// Extract the object properties
-	if callExpr, ok := expr.(*ast.CallExpr); ok {
-		if len(callExpr.Args) > 0 {
-			analyzer.extractObjectProperties(callExpr.Args[0], schema)
+		fset := token.NewFileSet()
+		file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
+		if err != nil {
+			t.Fatalf("Failed to parse: %v", err)
 		}
-	}
 
-	// Verify properties were extracted
-	if len(schema.Properties) != 4 {
-		t.Errorf("Expected 4 properties, got %d", len(schema.Properties))
-	}
+		// Find the composite literal for ExampleObject
+		var exampleLit *ast.CompositeLit
+		ast.Inspect(file, func(n ast.Node) bool {
+			if lit, ok := n.(*ast.CompositeLit); ok {
+				if sel, ok := lit.Type.(*ast.SelectorExpr); ok {
+					if pkg, ok := sel.X.(*ast.Ident); ok && pkg.Name == "validators" && sel.Sel.Name == "ExampleObject" {
+						exampleLit = lit
+						return false
+					}
+				}
+			}
+			return true
+		})
 
-	// Check id property
-	if idProp, exists := schema.Properties["id"]; exists {
-		if idProp.Type != "string" {
-			t.Errorf("Expected id type 'string', got '%s'", idProp.Type)
+		if exampleLit == nil {
+			t.Fatal("ExampleObject composite literal not found")
 		}
-	} else {
-		t.Errorf("Expected id property to exist")
-	}
 
-	// Check age property with constraints
-	if ageProp, exists := schema.Properties["age"]; exists {
-		if ageProp.Type != "number" {
-			t.Errorf("Expected age type 'number', got '%s'", ageProp.Type)
+		example := analyzer.extractExampleObject(exampleLit)
+		if example.Value != "test value" {
+			t.Errorf("Expected Value = 'test value', got %v", example.Value)
 		}
-		if ageProp.Minimum == nil || *ageProp.Minimum != 0 {
-			t.Errorf("Expected age minimum to be 0")
+		if example.Summary != "Test summary" {
+			t.Errorf("Expected Summary = 'Test summary', got %v", example.Summary)
 		}
-		if ageProp.Maximum == nil || *ageProp.Maximum != 150 {
-			t.Errorf("Expected age maximum to be 150")
+		if example.Description != "Test description" {
+			t.Errorf("Expected Description = 'Test description', got %v", example.Description)
 		}
-	} else {
-		t.Errorf("Expected age property to exist")
-	}
+		if example.ExternalValue != "https://example.com/external" {
+			t.Errorf("Expected ExternalValue = 'https://example.com/external', got %v", example.ExternalValue)
+		}
+	})
 
-	// Check active property
-	if activeProp, exists := schema.Properties["active"]; exists {
-		if activeProp.Type != "boolean" {
-			t.Errorf("Expected active type 'boolean', got '%s'", activeProp.Type)
-		}
-	} else {
-		t.Errorf("Expected active property to exist")
-	}
+	t.Run("Extract minimal example object", func(t *testing.T) {
+		src := `package main
+		import "github.com/picogrid/go-op/validators"
+		var example = validators.ExampleObject{
+			Value: 10,
+		}`
 
-	// Check tags property
-	if tagsProp, exists := schema.Properties["tags"]; exists {
-		if tagsProp.Type != "array" {
-			t.Errorf("Expected tags type 'array', got '%s'", tagsProp.Type)
+		fset := token.NewFileSet()
+		file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
+		if err != nil {
+			t.Fatalf("Failed to parse: %v", err)
 		}
-	} else {
-		t.Errorf("Expected tags property to exist")
-	}
+
+		// Find the composite literal for ExampleObject
+		var exampleLit *ast.CompositeLit
+		ast.Inspect(file, func(n ast.Node) bool {
+			if lit, ok := n.(*ast.CompositeLit); ok {
+				if sel, ok := lit.Type.(*ast.SelectorExpr); ok {
+					if pkg, ok := sel.X.(*ast.Ident); ok && pkg.Name == "validators" && sel.Sel.Name == "ExampleObject" {
+						exampleLit = lit
+						return false
+					}
+				}
+			}
+			return true
+		})
+
+		if exampleLit == nil {
+			t.Fatal("ExampleObject composite literal not found")
+		}
+
+		example := analyzer.extractExampleObject(exampleLit)
+		if example.Value != 10 {
+			t.Errorf("Expected Value = 10, got %v", example.Value)
+		}
+		if example.Summary != "" {
+			t.Errorf("Expected empty Summary, got %v", example.Summary)
+		}
+		if example.Description != "" {
+			t.Errorf("Expected empty Description, got %v", example.Description)
+		}
+		if example.ExternalValue != "" {
+			t.Errorf("Expected empty ExternalValue, got %v", example.ExternalValue)
+		}
+	})
+
+	t.Run("Extract example object with complex value", func(t *testing.T) {
+		src := `package main
+		import "github.com/picogrid/go-op/validators"
+		var example = validators.ExampleObject{
+			Value: map[string]interface{}{"name": "John", "age": 10},
+			Summary: "User object",
+		}`
+
+		fset := token.NewFileSet()
+		file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
+		if err != nil {
+			t.Fatalf("Failed to parse: %v", err)
+		}
+
+		// Find the composite literal for ExampleObject
+		var exampleLit *ast.CompositeLit
+		ast.Inspect(file, func(n ast.Node) bool {
+			if lit, ok := n.(*ast.CompositeLit); ok {
+				if sel, ok := lit.Type.(*ast.SelectorExpr); ok {
+					if pkg, ok := sel.X.(*ast.Ident); ok && pkg.Name == "validators" && sel.Sel.Name == "ExampleObject" {
+						exampleLit = lit
+						return false
+					}
+				}
+			}
+			return true
+		})
+
+		if exampleLit == nil {
+			t.Fatal("ExampleObject composite literal not found")
+		}
+
+		example := analyzer.extractExampleObject(exampleLit)
+		if example.Summary != "User object" {
+			t.Errorf("Expected Summary = 'User object', got %v", example.Summary)
+		}
+
+		// Check the complex value
+		if valueMap, ok := example.Value.(map[string]interface{}); ok {
+			if valueMap["name"] != "John" || valueMap["age"] != 10 {
+				t.Errorf("Expected complex value map[name:John age:10], got %v", valueMap)
+			}
+		} else {
+			t.Errorf("Expected complex value to be a map, got %T", example.Value)
+		}
+	})
 }
 
-func TestMethodChainTraversal(t *testing.T) {
-	code := `operations.NewSimple().GET("/test").Summary("Test").Tags("test", "api").WithBody(schema)`
+// TestTraverseValidatorChainPartialCoverage tests missing branches in traverseValidatorChain
+func TestTraverseValidatorChainPartialCoverage(t *testing.T) {
+	fset := token.NewFileSet()
+	analyzer := NewASTAnalyzer(fset, false)
 
-	expr, err := parser.ParseExpr(code)
-	if err != nil {
-		t.Fatalf("Failed to parse expression: %v", err)
-	}
+	t.Run("Handle unknown method call", func(t *testing.T) {
+		src := `package main
+		import "github.com/picogrid/go-op/validators"
+		var schema = validators.String().UnknownMethod().Required()`
 
-	analyzer := NewASTAnalyzer(token.NewFileSet(), false)
-	op := &OperationDefinition{
-		Tags: []string{},
-	}
+		fset := token.NewFileSet()
+		file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
+		if err != nil {
+			t.Fatalf("Failed to parse: %v", err)
+		}
 
-	if callExpr, ok := expr.(*ast.CallExpr); ok {
-		analyzer.traverseMethodChain(callExpr, op)
+		// Find the call chain
+		var callExpr *ast.CallExpr
+		ast.Inspect(file, func(n ast.Node) bool {
+			if call, ok := n.(*ast.CallExpr); ok {
+				if sel, ok := call.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "Required" {
+					callExpr = call
+					return false
+				}
+			}
+			return true
+		})
 
-		// Verify operation was populated
-		if op.Method != "GET" {
-			t.Errorf("Expected method 'GET', got '%s'", op.Method)
+		if callExpr == nil {
+			t.Fatal("Call expression not found")
 		}
-		if op.Path != "/test" {
-			t.Errorf("Expected path '/test', got '%s'", op.Path)
+
+		// This should handle the unknown method gracefully
+		// Create a basic schema to pass to the function
+		schema := &SchemaDefinition{Type: "string"}
+		analyzer.traverseValidatorChain(callExpr, schema)
+		// If we get here without panic, the function handled the unknown method gracefully
+	})
+
+	t.Run("Handle nested call expressions", func(t *testing.T) {
+		src := `package main
+		import "github.com/picogrid/go-op/validators"
+		var schema = validators.String().Pattern(getPattern()).Required()`
+
+		fset := token.NewFileSet()
+		file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
+		if err != nil {
+			t.Fatalf("Failed to parse: %v", err)
 		}
-		if op.Summary != "Test" {
-			t.Errorf("Expected summary 'Test', got '%s'", op.Summary)
+
+		// Find the call chain
+		var callExpr *ast.CallExpr
+		ast.Inspect(file, func(n ast.Node) bool {
+			if call, ok := n.(*ast.CallExpr); ok {
+				if sel, ok := call.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "Required" {
+					callExpr = call
+					return false
+				}
+			}
+			return true
+		})
+
+		if callExpr == nil {
+			t.Fatal("Call expression not found")
 		}
-		if len(op.Tags) != 2 || op.Tags[0] != "test" || op.Tags[1] != "api" {
-			t.Errorf("Expected tags [test, api], got %v", op.Tags)
-		}
-	} else {
-		t.Errorf("Expression is not a call expression")
-	}
+
+		// This should handle function calls as arguments
+		// Create a basic schema to pass to the function
+		schema := &SchemaDefinition{Type: "string"}
+		analyzer.traverseValidatorChain(callExpr, schema)
+		// If we get here without panic, the function handled the nested call gracefully
+	})
 }

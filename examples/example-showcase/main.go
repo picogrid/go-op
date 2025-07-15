@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	goop "github.com/picogrid/go-op"
+	"github.com/picogrid/go-op/validators"
 )
 
 // ExampleShowcase demonstrates OpenAPI 3.1 Example Object functionality
