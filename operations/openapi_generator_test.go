@@ -76,7 +76,6 @@ func TestAddSecurityScheme(t *testing.T) {
 
 		scheme := goop.NewAPIKeyHeader("X-API-Key", "API key authentication")
 		err := generator.AddSecurityScheme("apiKey", scheme)
-
 		if err != nil {
 			t.Errorf("Expected no error, got: %v", err)
 		}
@@ -123,7 +122,6 @@ func TestAddSecurityScheme(t *testing.T) {
 		)
 
 		err := generator.AddSecurityScheme("oauth2", scheme)
-
 		if err != nil {
 			t.Errorf("Expected no error, got: %v", err)
 		}
@@ -294,7 +292,6 @@ func TestProcessOperation(t *testing.T) {
 		}
 
 		err := generator.Process(info)
-
 		if err != nil {
 			t.Errorf("Expected no error, got: %v", err)
 		}
@@ -370,7 +367,6 @@ func TestProcessOperation(t *testing.T) {
 		}
 
 		err := generator.Process(info)
-
 		if err != nil {
 			t.Errorf("Expected no error, got: %v", err)
 		}
@@ -455,7 +451,6 @@ func TestProcessOperation(t *testing.T) {
 		}
 
 		err := generator.Process(info)
-
 		if err != nil {
 			t.Errorf("Expected no error, got: %v", err)
 		}
@@ -506,7 +501,6 @@ func TestProcessOperation(t *testing.T) {
 		}
 
 		err := generator.Process(info)
-
 		if err != nil {
 			t.Errorf("Expected no error, got: %v", err)
 		}
@@ -548,7 +542,6 @@ func TestProcessOperation(t *testing.T) {
 		}
 
 		err := generator.Process(info)
-
 		if err != nil {
 			t.Errorf("Expected no error, got: %v", err)
 		}
@@ -572,7 +565,6 @@ func TestOpenAPISpecWriting(t *testing.T) {
 
 		var buf bytes.Buffer
 		err := generator.WriteToWriter(&buf)
-
 		if err != nil {
 			t.Errorf("Expected no error, got: %v", err)
 		}
@@ -580,7 +572,6 @@ func TestOpenAPISpecWriting(t *testing.T) {
 		// Parse the JSON to verify it's valid
 		var spec map[string]interface{}
 		err = json.Unmarshal(buf.Bytes(), &spec)
-
 		if err != nil {
 			t.Errorf("Expected valid JSON, got error: %v", err)
 		}
@@ -603,7 +594,6 @@ func TestOpenAPISpecWriting(t *testing.T) {
 		defer os.Remove(tmpFile)
 
 		err := generator.WriteToFile(tmpFile)
-
 		if err != nil {
 			t.Errorf("Expected no error, got: %v", err)
 		}
@@ -616,7 +606,6 @@ func TestOpenAPISpecWriting(t *testing.T) {
 
 		var spec map[string]interface{}
 		err = json.Unmarshal(data, &spec)
-
 		if err != nil {
 			t.Errorf("Expected valid JSON, got error: %v", err)
 		}

@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/picogrid/go-op/operations"
+	ginadapter "github.com/picogrid/go-op/operations/adapters/gin"
 	"github.com/picogrid/go-op/validators"
 )
 
@@ -366,7 +367,7 @@ func main() {
 	// Set JSON Schema dialect
 	openAPIGen.SetJsonSchemaDialect("https://json-schema.org/draft/2020-12/schema")
 
-	router := operations.NewRouter(engine, openAPIGen)
+	router := ginadapter.NewGinRouter(engine, openAPIGen)
 
 	// ===== OneOf Schema Examples for E-commerce =====
 	// These demonstrate complex OneOf patterns for flexible payment and shipping options
@@ -916,7 +917,7 @@ func main() {
 		Tags("orders", "e-commerce").
 		WithBody(createOrderBodySchema).
 		WithResponse(orderResponseSchema).
-		Handler(operations.CreateValidatedHandler(createOrderHandler, nil, nil, createOrderBodySchema, orderResponseSchema))
+		Handler(ginadapter.CreateValidatedHandler(createOrderHandler, nil, nil, createOrderBodySchema, orderResponseSchema))
 
 	getOrderOp := operations.NewSimple().
 		GET("/orders/{id}").
@@ -925,7 +926,7 @@ func main() {
 		Tags("orders").
 		WithParams(orderParamsSchema).
 		WithResponse(orderResponseSchema).
-		Handler(operations.CreateValidatedHandler(getOrderHandler, orderParamsSchema, nil, nil, orderResponseSchema))
+		Handler(ginadapter.CreateValidatedHandler(getOrderHandler, orderParamsSchema, nil, nil, orderResponseSchema))
 
 	updateOrderStatusOp := operations.NewSimple().
 		PATCH("/orders/{id}/status").
@@ -935,7 +936,7 @@ func main() {
 		WithParams(orderParamsSchema).
 		WithBody(updateOrderStatusBodySchema).
 		WithResponse(orderResponseSchema).
-		Handler(operations.CreateValidatedHandler(updateOrderStatusHandler, orderParamsSchema, nil, updateOrderStatusBodySchema, orderResponseSchema))
+		Handler(ginadapter.CreateValidatedHandler(updateOrderStatusHandler, orderParamsSchema, nil, updateOrderStatusBodySchema, orderResponseSchema))
 
 	cancelOrderOp := operations.NewSimple().
 		DELETE("/orders/{id}").
@@ -943,7 +944,7 @@ func main() {
 		Description("Cancels an order if it hasn't been shipped yet").
 		Tags("orders").
 		WithParams(orderParamsSchema).
-		Handler(operations.CreateValidatedHandler(cancelOrderHandler, orderParamsSchema, nil, nil, nil))
+		Handler(ginadapter.CreateValidatedHandler(cancelOrderHandler, orderParamsSchema, nil, nil, nil))
 
 	listOrdersOp := operations.NewSimple().
 		GET("/orders").
@@ -952,7 +953,7 @@ func main() {
 		Tags("orders", "filtering").
 		WithQuery(listOrdersQuerySchema).
 		WithResponse(orderListResponseSchema).
-		Handler(operations.CreateValidatedHandler(listOrdersHandler, nil, listOrdersQuerySchema, nil, orderListResponseSchema))
+		Handler(ginadapter.CreateValidatedHandler(listOrdersHandler, nil, listOrdersQuerySchema, nil, orderListResponseSchema))
 
 	getAnalyticsOp := operations.NewSimple().
 		GET("/analytics/orders").
@@ -961,7 +962,7 @@ func main() {
 		Tags("analytics", "reporting").
 		WithQuery(analyticsQuerySchema).
 		WithResponse(analyticsResponseSchema).
-		Handler(operations.CreateValidatedHandler(getOrderAnalyticsHandler, nil, analyticsQuerySchema, nil, analyticsResponseSchema))
+		Handler(ginadapter.CreateValidatedHandler(getOrderAnalyticsHandler, nil, analyticsQuerySchema, nil, analyticsResponseSchema))
 
 	// New operation showcasing OneOf for payment and shipping methods
 	createAdvancedOrderOp := operations.NewSimple().
@@ -973,7 +974,7 @@ func main() {
 		Tags("orders", "e-commerce", "oneof-example", "payment", "shipping").
 		WithBody(createOrderBodySchema).
 		WithResponse(orderResponseSchema).
-		Handler(operations.CreateValidatedHandler(
+		Handler(ginadapter.CreateValidatedHandler(
 			createOrderHandler, // Reuse existing handler for demo
 			nil,
 			nil,
@@ -1109,7 +1110,7 @@ func main() {
 		Tags("pricing", "calculation", "openapi31-example").
 		WithBody(pricingCalculatorRequestSchema).
 		WithResponse(pricingCalculatorResponseSchema).
-		Handler(operations.CreateValidatedHandler(
+		Handler(ginadapter.CreateValidatedHandler(
 			func(ctx context.Context, params struct{}, query struct{}, body map[string]interface{}) (map[string]interface{}, error) {
 				// Simulate complex pricing calculation
 				items := body["items"].([]interface{})

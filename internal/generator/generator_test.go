@@ -709,7 +709,7 @@ var getUserOperation = operations.NewSimple().
 		"name": validators.String(),
 	}))
 `
-	if err := os.WriteFile(goFile, []byte(goContent), 0644); err != nil {
+	if err := os.WriteFile(goFile, []byte(goContent), 0o644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -737,7 +737,7 @@ package main
 
 var op1 = operations.NewSimple().GET("/test")
 `
-	if err := os.WriteFile(mainFile, []byte(mainContent), 0644); err != nil {
+	if err := os.WriteFile(mainFile, []byte(mainContent), 0o644); err != nil {
 		t.Fatalf("Failed to create main.go: %v", err)
 	}
 
@@ -748,26 +748,26 @@ package main
 
 var testOp = operations.NewSimple().GET("/test-endpoint")
 `
-	if err := os.WriteFile(testFile, []byte(testContent), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte(testContent), 0o644); err != nil {
 		t.Fatalf("Failed to create main_test.go: %v", err)
 	}
 
 	// Create vendor file (should be skipped)
 	vendorDir := filepath.Join(tempDir, "vendor", "github.com", "test")
-	os.MkdirAll(vendorDir, 0755)
+	os.MkdirAll(vendorDir, 0o755)
 	vendorFile := filepath.Join(vendorDir, "vendor.go")
 	vendorContent := `
 package test
 
 var vendorOp = operations.NewSimple().GET("/vendor")
 `
-	if err := os.WriteFile(vendorFile, []byte(vendorContent), 0644); err != nil {
+	if err := os.WriteFile(vendorFile, []byte(vendorContent), 0o644); err != nil {
 		t.Fatalf("Failed to create vendor file: %v", err)
 	}
 
 	// Create non-Go file (should be skipped)
 	txtFile := filepath.Join(tempDir, "readme.txt")
-	if err := os.WriteFile(txtFile, []byte("readme"), 0644); err != nil {
+	if err := os.WriteFile(txtFile, []byte("readme"), 0o644); err != nil {
 		t.Fatalf("Failed to create txt file: %v", err)
 	}
 

@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/picogrid/go-op/operations"
+	ginadapter "github.com/picogrid/go-op/operations/adapters/gin"
 	"github.com/picogrid/go-op/validators"
 )
 
@@ -62,7 +63,7 @@ func main() {
 	openAPIGen := operations.NewOpenAPIGenerator("User API", "1.0.0")
 
 	// Create router with generators
-	router := operations.NewRouter(engine, openAPIGen)
+	router := ginadapter.NewGinRouter(engine, openAPIGen)
 
 	// Define schemas using existing go-op validators
 	getUserParamsSchema := validators.Object(map[string]interface{}{
@@ -76,12 +77,12 @@ func main() {
 	userResponseSchema := validators.Object(map[string]interface{}{
 		"id":    validators.String().Min(1).Required(),
 		"name":  validators.String().Min(1).Required(),
-		"email": validators.String().Email().Required(),
+		"email": validators.String().Min(1).Pattern("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$").Required(),
 	}).Required()
 
 	createUserBodySchema := validators.Object(map[string]interface{}{
 		"name":  validators.String().Min(1).Max(100).Required(),
-		"email": validators.String().Email().Required(),
+		"email": validators.String().Min(1).Pattern("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$").Required(),
 	}).Required()
 
 	// Define operations using simple builders
@@ -93,7 +94,7 @@ func main() {
 		WithParams(getUserParamsSchema).
 		WithQuery(getUserQuerySchema).
 		WithResponse(userResponseSchema).
-		Handler(operations.CreateValidatedHandler(
+		Handler(ginadapter.CreateValidatedHandler(
 			getUserHandler,
 			getUserParamsSchema,
 			getUserQuerySchema,
@@ -109,7 +110,7 @@ func main() {
 		SuccessCode(operations.StatusCreated).
 		WithBody(createUserBodySchema).
 		WithResponse(userResponseSchema).
-		Handler(operations.CreateValidatedHandler(
+		Handler(ginadapter.CreateValidatedHandler(
 			createUserHandler,
 			nil, // no params schema
 			nil, // no query schema
