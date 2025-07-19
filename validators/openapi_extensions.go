@@ -484,13 +484,15 @@ type EnhancedOptionalBoolBuilder interface {
 }
 
 // Enhanced interface compliance check at compile time
-var _ EnhancedRequiredStringBuilder = (*requiredStringSchema)(nil)
-var _ EnhancedOptionalStringBuilder = (*optionalStringSchema)(nil)
-var _ EnhancedRequiredNumberBuilder = (*requiredNumberSchema)(nil)
-var _ EnhancedOptionalNumberBuilder = (*optionalNumberSchema)(nil)
-var _ EnhancedRequiredArrayBuilder = (*requiredArraySchema)(nil)
-var _ EnhancedOptionalArrayBuilder = (*optionalArraySchema)(nil)
-var _ EnhancedRequiredObjectBuilder = (*requiredObjectSchema)(nil)
-var _ EnhancedOptionalObjectBuilder = (*optionalObjectSchema)(nil)
-var _ EnhancedRequiredBoolBuilder = (*requiredBoolSchema)(nil)
-var _ EnhancedOptionalBoolBuilder = (*optionalBoolSchema)(nil)
+var (
+	_ EnhancedRequiredStringBuilder = (*requiredStringSchema)(nil)
+	_ EnhancedOptionalStringBuilder = (*optionalStringSchema)(nil)
+	_ EnhancedRequiredNumberBuilder = (*requiredNumberSchema)(nil)
+	_ EnhancedOptionalNumberBuilder = (*optionalNumberSchema)(nil)
+	_ EnhancedRequiredArrayBuilder  = (*requiredArraySchema)(nil)
+	_ EnhancedOptionalArrayBuilder  = (*optionalArraySchema)(nil)
+	_ EnhancedRequiredObjectBuilder = (*requiredObjectSchema)(nil)
+	_ EnhancedOptionalObjectBuilder = (*optionalObjectSchema)(nil)
+	_ EnhancedRequiredBoolBuilder   = (*requiredBoolSchema)(nil)
+	_ EnhancedOptionalBoolBuilder   = (*optionalBoolSchema)(nil)
+)

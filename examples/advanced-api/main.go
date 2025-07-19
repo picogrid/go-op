@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/picogrid/go-op/operations"
+	ginadapter "github.com/picogrid/go-op/operations/adapters/gin"
 	"github.com/picogrid/go-op/validators"
 )
 
@@ -309,7 +310,7 @@ func main() {
 	openAPIGen.SetJsonSchemaDialect("https://json-schema.org/draft/2020-12/schema")
 
 	// Create router
-	router := operations.NewRouter(engine, openAPIGen)
+	router := ginadapter.NewGinRouter(engine, openAPIGen)
 
 	// Define schemas using available validator methods
 
@@ -422,7 +423,7 @@ func main() {
 		Tags("products").
 		WithBody(createProductBodySchema).
 		WithResponse(productResponseSchema).
-		Handler(operations.CreateValidatedHandler(
+		Handler(ginadapter.CreateValidatedHandler(
 			createProductHandler,
 			validators.Object(map[string]interface{}{}).Required(),
 			validators.Object(map[string]interface{}{}).Required(),
@@ -438,7 +439,7 @@ func main() {
 		Tags("products").
 		WithParams(productParamsSchema).
 		WithResponse(productResponseSchema).
-		Handler(operations.CreateValidatedHandler(
+		Handler(ginadapter.CreateValidatedHandler(
 			getProductHandler,
 			productParamsSchema,
 			validators.Object(map[string]interface{}{}).Required(),
@@ -455,7 +456,7 @@ func main() {
 		WithParams(productParamsSchema).
 		WithBody(updateProductBodySchema).
 		WithResponse(productResponseSchema).
-		Handler(operations.CreateValidatedHandler(
+		Handler(ginadapter.CreateValidatedHandler(
 			updateProductHandler,
 			productParamsSchema,
 			validators.Object(map[string]interface{}{}).Required(),
@@ -471,7 +472,7 @@ func main() {
 		Tags("products").
 		WithQuery(searchQuerySchema).
 		WithResponse(productListResponseSchema).
-		Handler(operations.CreateValidatedHandler(
+		Handler(ginadapter.CreateValidatedHandler(
 			searchProductsHandler,
 			validators.Object(map[string]interface{}{}).Required(),
 			searchQuerySchema,

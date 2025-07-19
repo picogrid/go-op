@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/picogrid/go-op/operations"
+	ginadapter "github.com/picogrid/go-op/operations/adapters/gin"
 	"github.com/picogrid/go-op/validators"
 )
 
@@ -535,7 +536,7 @@ func main() {
 	// Set JSON Schema dialect
 	openAPIGen.SetJsonSchemaDialect("https://json-schema.org/draft/2020-12/schema")
 
-	router := operations.NewRouter(engine, openAPIGen)
+	router := ginadapter.NewGinRouter(engine, openAPIGen)
 
 	// ===== OneOf Schema Examples for Notification Service =====
 	// These demonstrate complex OneOf patterns for flexible notification content and delivery options
@@ -1029,7 +1030,7 @@ func main() {
 		Tags("notifications", "messaging").
 		WithBody(sendNotificationBodySchema).
 		WithResponse(notificationResponseSchema).
-		Handler(operations.CreateValidatedHandler(sendNotificationHandler, nil, nil, sendNotificationBodySchema, notificationResponseSchema))
+		Handler(ginadapter.CreateValidatedHandler(sendNotificationHandler, nil, nil, sendNotificationBodySchema, notificationResponseSchema))
 
 	sendBulkOp := operations.NewSimple().
 		POST("/notifications/bulk").
@@ -1043,7 +1044,7 @@ func main() {
 			"scheduled_at": validators.String().Optional(),
 			"status":       validators.String().Required(),
 		}).Required()).
-		Handler(operations.CreateValidatedHandler(sendBulkNotificationHandler, nil, nil, sendBulkNotificationBodySchema, nil))
+		Handler(ginadapter.CreateValidatedHandler(sendBulkNotificationHandler, nil, nil, sendBulkNotificationBodySchema, nil))
 
 	sendTemplatedOp := operations.NewSimple().
 		POST("/notifications/templated").
@@ -1052,7 +1053,7 @@ func main() {
 		Tags("notifications", "templates", "messaging").
 		WithBody(sendTemplatedNotificationBodySchema).
 		WithResponse(notificationResponseSchema).
-		Handler(operations.CreateValidatedHandler(sendTemplatedNotificationHandler, nil, nil, sendTemplatedNotificationBodySchema, notificationResponseSchema))
+		Handler(ginadapter.CreateValidatedHandler(sendTemplatedNotificationHandler, nil, nil, sendTemplatedNotificationBodySchema, notificationResponseSchema))
 
 	getNotificationOp := operations.NewSimple().
 		GET("/notifications/{id}").
@@ -1061,7 +1062,7 @@ func main() {
 		Tags("notifications").
 		WithParams(notificationParamsSchema).
 		WithResponse(notificationResponseSchema).
-		Handler(operations.CreateValidatedHandler(getNotificationHandler, notificationParamsSchema, nil, nil, notificationResponseSchema))
+		Handler(ginadapter.CreateValidatedHandler(getNotificationHandler, notificationParamsSchema, nil, nil, notificationResponseSchema))
 
 	markReadOp := operations.NewSimple().
 		PATCH("/notifications/{id}/read").
@@ -1070,7 +1071,7 @@ func main() {
 		Tags("notifications", "status").
 		WithParams(notificationParamsSchema).
 		WithResponse(notificationResponseSchema).
-		Handler(operations.CreateValidatedHandler(markNotificationReadHandler, notificationParamsSchema, nil, nil, notificationResponseSchema))
+		Handler(ginadapter.CreateValidatedHandler(markNotificationReadHandler, notificationParamsSchema, nil, nil, notificationResponseSchema))
 
 	listNotificationsOp := operations.NewSimple().
 		GET("/notifications").
@@ -1086,7 +1087,7 @@ func main() {
 			"page_size":     validators.Number().Min(1).Required(),
 			"has_next":      validators.Bool().Required(),
 		}).Required()).
-		Handler(operations.CreateValidatedHandler(listNotificationsHandler, nil, listNotificationsQuerySchema, nil, nil))
+		Handler(ginadapter.CreateValidatedHandler(listNotificationsHandler, nil, listNotificationsQuerySchema, nil, nil))
 
 	getStatsOp := operations.NewSimple().
 		GET("/analytics/notifications").
@@ -1102,7 +1103,7 @@ func main() {
 			"type_stats":       validators.Array(validators.Object(map[string]interface{}{})).Required(),
 			"time_series_data": validators.Array(validators.Object(map[string]interface{}{})).Required(),
 		}).Required()).
-		Handler(operations.CreateValidatedHandler(getNotificationStatsHandler, nil, statsQuerySchema, nil, nil))
+		Handler(ginadapter.CreateValidatedHandler(getNotificationStatsHandler, nil, statsQuerySchema, nil, nil))
 
 	createTemplateOp := operations.NewSimple().
 		POST("/templates").
@@ -1123,7 +1124,7 @@ func main() {
 			"created_at": validators.String().Required(),
 			"updated_at": validators.String().Required(),
 		}).Required()).
-		Handler(operations.CreateValidatedHandler(createTemplateHandler, nil, nil, createTemplateBodySchema, nil))
+		Handler(ginadapter.CreateValidatedHandler(createTemplateHandler, nil, nil, createTemplateBodySchema, nil))
 
 	getTemplateOp := operations.NewSimple().
 		GET("/templates/{id}").
@@ -1144,7 +1145,7 @@ func main() {
 			"created_at": validators.String().Required(),
 			"updated_at": validators.String().Required(),
 		}).Required()).
-		Handler(operations.CreateValidatedHandler(getTemplateHandler, templateParamsSchema, nil, nil, nil))
+		Handler(ginadapter.CreateValidatedHandler(getTemplateHandler, templateParamsSchema, nil, nil, nil))
 
 	updateTemplateOp := operations.NewSimple().
 		PUT("/templates/{id}").
@@ -1166,7 +1167,7 @@ func main() {
 			"created_at": validators.String().Required(),
 			"updated_at": validators.String().Required(),
 		}).Required()).
-		Handler(operations.CreateValidatedHandler(updateTemplateHandler, templateParamsSchema, nil, updateTemplateBodySchema, nil))
+		Handler(ginadapter.CreateValidatedHandler(updateTemplateHandler, templateParamsSchema, nil, updateTemplateBodySchema, nil))
 
 	deleteTemplateOp := operations.NewSimple().
 		DELETE("/templates/{id}").
@@ -1174,7 +1175,7 @@ func main() {
 		Description("Deletes a template").
 		Tags("templates", "management").
 		WithParams(templateParamsSchema).
-		Handler(operations.CreateValidatedHandler(deleteTemplateHandler, templateParamsSchema, nil, nil, nil))
+		Handler(ginadapter.CreateValidatedHandler(deleteTemplateHandler, templateParamsSchema, nil, nil, nil))
 
 	listTemplatesOp := operations.NewSimple().
 		GET("/templates").
@@ -1189,7 +1190,7 @@ func main() {
 			"page_size":   validators.Number().Min(1).Required(),
 			"has_next":    validators.Bool().Required(),
 		}).Required()).
-		Handler(operations.CreateValidatedHandler(listTemplatesHandler, nil, listTemplatesQuerySchema, nil, nil))
+		Handler(ginadapter.CreateValidatedHandler(listTemplatesHandler, nil, listTemplatesQuerySchema, nil, nil))
 
 	// New operation showcasing OneOf for content types and delivery options
 	sendAdvancedNotificationOp := operations.NewSimple().
@@ -1215,7 +1216,7 @@ func main() {
 			"created_at": validators.String().Required(),
 			"updated_at": validators.String().Required(),
 		}).Required()).
-		Handler(operations.CreateValidatedHandler(
+		Handler(ginadapter.CreateValidatedHandler(
 			sendNotificationHandler, // Reuse existing handler for demo
 			nil,
 			nil,

@@ -22,7 +22,7 @@ type operationConfig struct {
 }
 
 // Helper method to compile the final operation
-func (config *operationConfig) compile(handler GinHandler) CompiledOperation {
+func (config *operationConfig) compile(handler HTTPHandler) CompiledOperation {
 	op := CompiledOperation{
 		Method:      config.method,
 		Path:        config.path,
@@ -223,6 +223,6 @@ func (s *SimpleOperationBuilder) NoAuth() *SimpleOperationBuilder {
 }
 
 // Handler compiles the operation with the provided handler
-func (s *SimpleOperationBuilder) Handler(handler GinHandler) CompiledOperation {
+func (s *SimpleOperationBuilder) Handler(handler HTTPHandler) CompiledOperation {
 	return s.config.compile(handler)
 }

@@ -154,6 +154,7 @@ import (
     
     "github.com/gin-gonic/gin"
     "github.com/picogrid/go-op/operations"
+    ginadapter "github.com/picogrid/go-op/operations/adapters/gin"
     "github.com/picogrid/go-op/validators"
 )
 
@@ -176,7 +177,7 @@ func main() {
     
     // Create OpenAPI generator
     openAPIGen := operations.NewOpenAPIGenerator("My API", "1.0.0")
-    router := operations.NewRouter(engine, openAPIGen)
+    router := ginadapter.NewGinRouter(engine, openAPIGen)
     
     // Define type-safe validation schemas
     createUserSchema := validators.ForStruct[CreateUserRequest]().
@@ -199,7 +200,7 @@ func main() {
         Tags("users").
         WithBody(createUserSchema).
         WithResponse(userResponseSchema).
-        Handler(operations.CreateValidatedHandler(
+        Handler(ginadapter.CreateValidatedHandler(
             createUserHandler,
             nil, nil, createUserSchema, userResponseSchema,
         ))
@@ -405,15 +406,21 @@ userValidator := validators.ForStruct[User]().
 
 #### Gin Integration
 
-go-op provides seamless Gin router integration:
+go-op provides seamless Gin router integration through the adapter pattern:
 
 ```go
+import (
+    "github.com/gin-gonic/gin"
+    "github.com/picogrid/go-op/operations"
+    ginadapter "github.com/picogrid/go-op/operations/adapters/gin"
+)
+
 // Standard Gin setup
 engine := gin.Default()
 
 // go-op router with OpenAPI generation
 openAPIGen := operations.NewOpenAPIGenerator("My API", "1.0.0")
-router := operations.NewRouter(engine, openAPIGen)
+router := ginadapter.NewGinRouter(engine, openAPIGen)
 
 // Register operations - validation is automatic
 router.Register(createUserOp)
@@ -430,7 +437,7 @@ The framework provides automatic request/response validation:
 
 ```go
 // Handler with automatic validation
-handler := operations.CreateValidatedHandler(
+handler := ginadapter.CreateValidatedHandler(
     businessLogicHandler,  // Your business logic
     paramsSchema,         // Path parameter validation
     querySchema,          // Query parameter validation  
@@ -444,7 +451,6 @@ handler := operations.CreateValidatedHandler(
 // 3. Validates outgoing response
 // 4. Returns appropriate errors
 ```
-
 ---
 
 ## OpenAPI 3.1 Support

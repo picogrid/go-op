@@ -1,12 +1,19 @@
 package goop
 
 import (
+	"context"
 	"sync"
 )
 
 type Schema interface {
 	Validate(data interface{}) error
 }
+
+// Handler represents a type-safe operation handler function
+// Context provides access to the request context and other data
+// P, Q, B represent Params, Query, and Body types
+// R represents the Response type
+type Handler[P, Q, B, R any] func(ctx context.Context, params P, query Q, body B) (R, error)
 
 func ValidateSchema(schema Schema, data interface{}) error {
 	return schema.Validate(data)

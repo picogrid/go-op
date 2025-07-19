@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/picogrid/go-op/operations"
+	ginadapter "github.com/picogrid/go-op/operations/adapters/gin"
 	"github.com/picogrid/go-op/validators"
 )
 
@@ -254,7 +255,7 @@ func main() {
 	})
 
 	// Create router with generators
-	router := operations.NewRouter(engine, openAPIGen)
+	router := ginadapter.NewGinRouter(engine, openAPIGen)
 
 	// ===== OneOf Schema Examples =====
 	// These demonstrate complex OneOf patterns for API flexibility
@@ -787,7 +788,7 @@ func main() {
 		Tags("users").
 		WithBody(createUserBodySchema).
 		WithResponse(userResponseSchema).
-		Handler(operations.CreateValidatedHandler(
+		Handler(ginadapter.CreateValidatedHandler(
 			createUserHandler,
 			nil,
 			nil,
@@ -802,7 +803,7 @@ func main() {
 		Tags("users").
 		WithParams(userParamsSchema).
 		WithResponse(userResponseSchema).
-		Handler(operations.CreateValidatedHandler(
+		Handler(ginadapter.CreateValidatedHandler(
 			getUserHandler,
 			userParamsSchema,
 			nil,
@@ -818,7 +819,7 @@ func main() {
 		WithParams(userParamsSchema).
 		WithBody(updateUserBodySchema).
 		WithResponse(userResponseSchema).
-		Handler(operations.CreateValidatedHandler(
+		Handler(ginadapter.CreateValidatedHandler(
 			updateUserHandler,
 			userParamsSchema,
 			nil,
@@ -832,7 +833,7 @@ func main() {
 		Description("Permanently deletes a user account").
 		Tags("users").
 		WithParams(userParamsSchema).
-		Handler(operations.CreateValidatedHandler(
+		Handler(ginadapter.CreateValidatedHandler(
 			deleteUserHandler,
 			userParamsSchema,
 			nil,
@@ -847,7 +848,7 @@ func main() {
 		Tags("users").
 		WithQuery(listUsersQuerySchema).
 		WithResponse(userListResponseSchema).
-		Handler(operations.CreateValidatedHandler(
+		Handler(ginadapter.CreateValidatedHandler(
 			listUsersHandler,
 			nil,
 			listUsersQuerySchema,
@@ -866,7 +867,7 @@ func main() {
 		WithParams(userParamsSchema).
 		WithBody(updateUserProfileBodySchema).
 		WithResponse(userResponseSchema).
-		Handler(operations.CreateValidatedHandler(
+		Handler(ginadapter.CreateValidatedHandler(
 			updateUserHandler, // Reuse existing handler for demo
 			userParamsSchema,
 			nil,
@@ -905,7 +906,7 @@ func main() {
 		Description("Returns the current API version with const validation and service features using OpenAPI 3.1 uniqueItems").
 		Tags("meta").
 		WithResponse(apiVersionResponseSchema).
-		Handler(operations.CreateValidatedHandler(
+		Handler(ginadapter.CreateValidatedHandler(
 			func(ctx context.Context, params struct{}, query struct{}, body struct{}) (map[string]interface{}, error) {
 				return map[string]interface{}{
 					"api_version":       "v1.0",

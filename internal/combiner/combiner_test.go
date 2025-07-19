@@ -208,7 +208,7 @@ paths:
         '200':
           description: Success
 `
-	if err := os.WriteFile(yamlFile, []byte(yamlContent), 0644); err != nil {
+	if err := os.WriteFile(yamlFile, []byte(yamlContent), 0o644); err != nil {
 		t.Fatalf("Failed to create test YAML file: %v", err)
 	}
 
@@ -233,7 +233,7 @@ paths:
     }
   }
 }`
-	if err := os.WriteFile(jsonFile, []byte(jsonContent), 0644); err != nil {
+	if err := os.WriteFile(jsonFile, []byte(jsonContent), 0o644); err != nil {
 		t.Fatalf("Failed to create test JSON file: %v", err)
 	}
 
@@ -561,7 +561,7 @@ paths:
     get:
       summary: Get users
 `
-	if err := os.WriteFile(spec1File, []byte(spec1Content), 0644); err != nil {
+	if err := os.WriteFile(spec1File, []byte(spec1Content), 0o644); err != nil {
 		t.Fatalf("Failed to create spec file: %v", err)
 	}
 
@@ -576,7 +576,7 @@ paths:
     get:
       summary: Get orders
 `
-	if err := os.WriteFile(spec2File, []byte(spec2Content), 0644); err != nil {
+	if err := os.WriteFile(spec2File, []byte(spec2Content), 0o644); err != nil {
 		t.Fatalf("Failed to create spec file: %v", err)
 	}
 
@@ -599,7 +599,7 @@ settings:
   merge_schemas: true
   validate_output: true
 `
-	if err := os.WriteFile(configFile, []byte(configContent), 0644); err != nil {
+	if err := os.WriteFile(configFile, []byte(configContent), 0o644); err != nil {
 		t.Fatalf("Failed to create config file: %v", err)
 	}
 

@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	goop "github.com/picogrid/go-op"
 	"github.com/picogrid/go-op/operations"
+	ginadapter "github.com/picogrid/go-op/operations/adapters/gin"
 	"github.com/picogrid/go-op/validators"
 )
 
@@ -80,7 +81,7 @@ func main() {
 	globalSecurity := goop.SecurityRequirements{}.RequireScheme("ApiKeyAuth").RequireScheme("BearerAuth")
 	openAPIGen.SetGlobalSecurity(globalSecurity)
 
-	router := operations.NewRouter(engine, openAPIGen)
+	router := ginadapter.NewGinRouter(engine, openAPIGen)
 
 	// Define schemas
 	userParamsSchema := validators.Object(map[string]interface{}{
@@ -112,7 +113,7 @@ func main() {
 		WithParams(userParamsSchema).
 		WithResponse(userResponseSchema).
 		NoAuth(). // Explicitly mark as no auth required
-		Handler(operations.CreateValidatedHandler(
+		Handler(ginadapter.CreateValidatedHandler(
 			getUserHandler,
 			userParamsSchema,
 			nil,
@@ -130,7 +131,7 @@ func main() {
 		WithHeaders(headerSchema).
 		WithResponse(userResponseSchema).
 		RequireAPIKey("ApiKeyAuth"). // Require API key
-		Handler(operations.CreateValidatedHandler(
+		Handler(ginadapter.CreateValidatedHandler(
 			getUserHandler,
 			userParamsSchema,
 			nil,
@@ -147,7 +148,7 @@ func main() {
 		WithParams(userParamsSchema).
 		WithResponse(userResponseSchema).
 		RequireBearer("BearerAuth"). // Require Bearer token
-		Handler(operations.CreateValidatedHandler(
+		Handler(ginadapter.CreateValidatedHandler(
 			getUserHandler,
 			userParamsSchema,
 			nil,
@@ -164,7 +165,7 @@ func main() {
 		WithParams(userParamsSchema).
 		WithResponse(userResponseSchema).
 		RequireOAuth2("OAuth2", "read"). // Require OAuth2 with read scope
-		Handler(operations.CreateValidatedHandler(
+		Handler(ginadapter.CreateValidatedHandler(
 			getUserHandler,
 			userParamsSchema,
 			nil,
@@ -180,7 +181,7 @@ func main() {
 		Tags("admin").
 		WithResponse(adminResponseSchema).
 		RequireOAuth2("OAuth2", "admin"). // Require OAuth2 with admin scope
-		Handler(operations.CreateValidatedHandler(
+		Handler(ginadapter.CreateValidatedHandler(
 			adminHandler,
 			nil,
 			nil,
@@ -197,7 +198,7 @@ func main() {
 		WithParams(userParamsSchema).
 		WithResponse(userResponseSchema).
 		RequireAnyOf("ApiKeyAuth", "BearerAuth"). // Either API key OR Bearer token
-		Handler(operations.CreateValidatedHandler(
+		Handler(ginadapter.CreateValidatedHandler(
 			getUserHandler,
 			userParamsSchema,
 			nil,

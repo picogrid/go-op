@@ -419,7 +419,7 @@ func (c *Combiner) ValidateOutput() error {
 func (c *Combiner) WriteOutput() error {
 	// Create output directory if it doesn't exist
 	outputDir := filepath.Dir(c.config.OutputFile)
-	if err := os.MkdirAll(outputDir, 0750); err != nil {
+	if err := os.MkdirAll(outputDir, 0o750); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
