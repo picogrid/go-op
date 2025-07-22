@@ -429,60 +429,92 @@ func (g *OpenAPIGenerator) Process(info OperationInfo) error {
 		}
 	}
 
-	// Add response
-	successCode := fmt.Sprintf("%d", info.Operation.SuccessCode)
-	response := OpenAPIResponse{
-		Description: "Successful response",
-	}
+	// Add responses - use multiple responses if defined, otherwise use legacy single response
+	if len(info.Operation.Responses) > 0 {
+		// Use new multiple responses system
+		for code, responseDef := range info.Operation.Responses {
+			codeStr := fmt.Sprintf("%d", code)
 
-	if info.Operation.ResponseSpec != nil {
-		mediaType := OpenAPIMediaType{
-			Schema: info.Operation.ResponseSpec,
+			response := OpenAPIResponse{
+				Description: responseDef.Description,
+			}
+
+			// Add schema if present
+			if responseDef.Schema != nil {
+				if enhanced, ok := responseDef.Schema.(goop.EnhancedSchema); ok {
+					mediaType := OpenAPIMediaType{
+						Schema: enhanced.ToOpenAPISchema(),
+					}
+
+					// Add example from schema if available
+					if enhanced.ToOpenAPISchema().Example != nil {
+						mediaType.Example = enhanced.ToOpenAPISchema().Example
+					}
+
+					response.Content = map[string]OpenAPIMediaType{
+						"application/json": mediaType,
+					}
+				}
+			}
+
+			operation.Responses[codeStr] = response
+		}
+	} else {
+		// Fallback to legacy single response for backward compatibility
+		successCode := fmt.Sprintf("%d", info.Operation.SuccessCode)
+		response := OpenAPIResponse{
+			Description: "Successful response",
 		}
 
-		// Add example from schema if available
-		if info.Operation.ResponseSpec.Example != nil {
-			mediaType.Example = info.Operation.ResponseSpec.Example
+		if info.Operation.ResponseSpec != nil {
+			mediaType := OpenAPIMediaType{
+				Schema: info.Operation.ResponseSpec,
+			}
+
+			// Add example from schema if available
+			if info.Operation.ResponseSpec.Example != nil {
+				mediaType.Example = info.Operation.ResponseSpec.Example
+			}
+
+			response.Content = map[string]OpenAPIMediaType{
+				"application/json": mediaType,
+			}
 		}
 
-		response.Content = map[string]OpenAPIMediaType{
-			"application/json": mediaType,
-		}
-	}
+		operation.Responses[successCode] = response
 
-	operation.Responses[successCode] = response
-
-	// Add common error responses
-	operation.Responses["400"] = OpenAPIResponse{
-		Description: "Bad Request",
-		Content: map[string]OpenAPIMediaType{
-			"application/json": {
-				Schema: &goop.OpenAPISchema{
-					Type: "object",
-					Properties: map[string]*goop.OpenAPISchema{
-						"error":   {Type: "string"},
-						"details": {Type: "string"},
+		// Add default error responses only if no custom responses are defined
+		operation.Responses["400"] = OpenAPIResponse{
+			Description: "Bad Request",
+			Content: map[string]OpenAPIMediaType{
+				"application/json": {
+					Schema: &goop.OpenAPISchema{
+						Type: "object",
+						Properties: map[string]*goop.OpenAPISchema{
+							"error":   {Type: "string"},
+							"details": {Type: "string"},
+						},
+						Required: []string{"error"},
 					},
-					Required: []string{"error"},
 				},
 			},
-		},
-	}
+		}
 
-	operation.Responses["500"] = OpenAPIResponse{
-		Description: "Internal Server Error",
-		Content: map[string]OpenAPIMediaType{
-			"application/json": {
-				Schema: &goop.OpenAPISchema{
-					Type: "object",
-					Properties: map[string]*goop.OpenAPISchema{
-						"error":   {Type: "string"},
-						"details": {Type: "string"},
+		operation.Responses["500"] = OpenAPIResponse{
+			Description: "Internal Server Error",
+			Content: map[string]OpenAPIMediaType{
+				"application/json": {
+					Schema: &goop.OpenAPISchema{
+						Type: "object",
+						Properties: map[string]*goop.OpenAPISchema{
+							"error":   {Type: "string"},
+							"details": {Type: "string"},
+						},
+						Required: []string{"error"},
 					},
-					Required: []string{"error"},
 				},
 			},
-		},
+		}
 	}
 
 	// Store the operation

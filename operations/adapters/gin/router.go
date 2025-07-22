@@ -33,9 +33,19 @@ func ConvertOpenAPIPathToGin(path string) string {
 	return result
 }
 
-// Register registers a compiled operation with the Gin router
+// Register registers one or more compiled operations with the Gin router
 // This method performs zero reflection and maximum performance registration
-func (r *GinRouter) Register(op goop.CompiledOperation) error {
+func (r *GinRouter) Register(ops ...goop.CompiledOperation) error {
+	for _, op := range ops {
+		if err := r.registerSingle(op); err != nil {
+			return fmt.Errorf("failed to register operation %s %s: %w", op.Method, op.Path, err)
+		}
+	}
+	return nil
+}
+
+// registerSingle registers a single compiled operation with the Gin router
+func (r *GinRouter) registerSingle(op goop.CompiledOperation) error {
 	// Store the operation for generator processing
 	r.operations = append(r.operations, op)
 
@@ -108,6 +118,22 @@ func (r *GinRouter) GetOperations() []goop.CompiledOperation {
 	ops := make([]goop.CompiledOperation, len(r.operations))
 	copy(ops, r.operations)
 	return ops
+}
+
+// WithMiddleware chains middleware with a handler for operation-specific middleware application
+// Usage: Handler(router.WithMiddleware(handlerFunc, middleware1, middleware2))
+func (r *GinRouter) WithMiddleware(handler GinHandler, middleware ...GinHandler) GinHandler {
+	return func(c *gin.Context) {
+		// Apply each middleware in order
+		for _, mw := range middleware {
+			mw(c)
+			if c.IsAborted() {
+				return // Stop if middleware aborted the request
+			}
+		}
+		// Call the actual handler if middleware didn't abort
+		handler(c)
+	}
 }
 
 // ServeSpec serves the OpenAPI specification as JSON
