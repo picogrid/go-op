@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"strconv"
 	"strings"
 )
 
@@ -371,7 +372,7 @@ func (a *ASTAnalyzer) extractStringLiteral(expr ast.Expr) string {
 func (a *ASTAnalyzer) extractIntLiteral(expr ast.Expr) int {
 	if basicLit, ok := expr.(*ast.BasicLit); ok && basicLit.Kind == token.INT {
 		var value int
-		fmt.Sscanf(basicLit.Value, "%d", &value)
+		value, _ = strconv.Atoi(basicLit.Value)
 		return value
 	}
 	return 0
