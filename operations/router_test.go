@@ -1222,3 +1222,243 @@ func TestRouterPathConversion(t *testing.T) {
 		}
 	})
 }
+
+// TestRouterErrorHandling tests end-to-end error response scenarios
+func TestRouterErrorHandling(t *testing.T) {
+	t.Run("Error response with standard error schemas", func(t *testing.T) {
+		engine := createTestEngine()
+		router := ginadapter.NewGinRouter(engine)
+
+		// Create handler that returns different error types
+		handler := gin.HandlerFunc(func(c *gin.Context) {
+			errorType := c.Query("error")
+			switch errorType {
+			case "bad_request":
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error":   "bad_request",
+					"message": "The request could not be understood or was missing required parameters",
+					"code":    400,
+				})
+			case "unauthorized":
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"error":   "unauthorized",
+					"message": "Authentication is required to access this resource",
+					"code":    401,
+				})
+			case "not_found":
+				c.JSON(http.StatusNotFound, gin.H{
+					"error":   "not_found",
+					"message": "The requested resource was not found",
+					"code":    404,
+				})
+			default:
+				c.JSON(http.StatusOK, gin.H{"message": "success"})
+			}
+		})
+
+		// Create operation with multiple error responses
+		op := CompiledOperation{
+			Method:  "GET",
+			Path:    "/test",
+			Handler: handler,
+			Responses: map[int]goop.ResponseDefinition{
+				200: {Schema: &mockSchema{shouldValidate: true}, Description: "Success"},
+				400: {Schema: BadRequestErrorSchema, Description: "Bad Request"},
+				401: {Schema: UnauthorizedErrorSchema, Description: "Unauthorized"},
+				404: {Schema: NotFoundErrorSchema, Description: "Not Found"},
+			},
+		}
+
+		err := router.Register(op)
+		if err != nil {
+			t.Fatalf("Failed to register operation: %v", err)
+		}
+
+		// Test each error scenario
+		testCases := []struct {
+			name           string
+			query          string
+			expectedStatus int
+			expectedError  string
+		}{
+			{"success case", "", http.StatusOK, ""},
+			{"bad request", "error=bad_request", http.StatusBadRequest, "bad_request"},
+			{"unauthorized", "error=unauthorized", http.StatusUnauthorized, "unauthorized"},
+			{"not found", "error=not_found", http.StatusNotFound, "not_found"},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				url := "/test"
+				if tc.query != "" {
+					url += "?" + tc.query
+				}
+
+				req := httptest.NewRequest("GET", url, nil)
+				w := httptest.NewRecorder()
+				engine.ServeHTTP(w, req)
+
+				if w.Code != tc.expectedStatus {
+					t.Errorf("Expected status %d, got %d", tc.expectedStatus, w.Code)
+				}
+
+				if tc.expectedError != "" {
+					var response map[string]interface{}
+					err := json.Unmarshal(w.Body.Bytes(), &response)
+					if err != nil {
+						t.Errorf("Failed to unmarshal response: %v", err)
+					}
+
+					if response["error"] != tc.expectedError {
+						t.Errorf("Expected error '%s', got '%v'", tc.expectedError, response["error"])
+					}
+				}
+			})
+		}
+	})
+}
+
+// TestMultipleResponseValidation tests operations with multiple defined responses
+func TestMultipleResponseValidation(t *testing.T) {
+	t.Run("Operation with comprehensive error responses", func(t *testing.T) {
+		engine := createTestEngine()
+		generator := &mockGenerator{}
+		router := ginadapter.NewGinRouter(engine, generator)
+
+		handler := gin.HandlerFunc(func(c *gin.Context) {
+			c.JSON(200, gin.H{"message": "success"})
+		})
+
+		// Create operation using the new convenience methods
+		op := NewSimple().
+			POST("/users").
+			WithSuccessResponse(201, &mockSchema{shouldValidate: true}, "User Created").
+			WithCreateErrors(). // Adds 400, 401, 403, 409, 422, 500
+			Handler(handler)
+
+		err := router.Register(op)
+		if err != nil {
+			t.Fatalf("Failed to register operation: %v", err)
+		}
+
+		// Verify all expected responses are defined
+		expectedCodes := []int{201, 400, 401, 403, 409, 422, 500}
+		for _, code := range expectedCodes {
+			if _, exists := op.Responses[code]; !exists {
+				t.Errorf("Expected response code %d to be defined", code)
+			}
+		}
+
+		// Verify generator received the operation info
+		if len(generator.processedOps) != 1 {
+			t.Errorf("Expected 1 processed operation, got %d", len(generator.processedOps))
+		}
+
+		processedOp := generator.processedOps[0]
+		if processedOp.Method != "POST" {
+			t.Errorf("Expected method 'POST', got '%s'", processedOp.Method)
+		}
+		if processedOp.Path != "/users" {
+			t.Errorf("Expected path '/users', got '%s'", processedOp.Path)
+		}
+	})
+}
+
+// TestVariadicRegisterWithErrors tests the new variadic Register method with error responses
+func TestVariadicRegisterWithErrors(t *testing.T) {
+	t.Run("Register multiple operations with error responses", func(t *testing.T) {
+		engine := createTestEngine()
+		generator := &mockGenerator{}
+		router := ginadapter.NewGinRouter(engine, generator)
+
+		// Create test handler
+		handler := gin.HandlerFunc(func(c *gin.Context) {
+			c.JSON(200, gin.H{"message": "test"})
+		})
+
+		// Create multiple operations with different error patterns
+		createOp := NewSimple().
+			POST("/users").
+			WithSuccessResponse(201, &mockSchema{shouldValidate: true}, "Created").
+			WithCreateErrors().
+			Handler(handler)
+
+		getOp := NewSimple().
+			GET("/users/{id}").
+			WithSuccessResponse(200, &mockSchema{shouldValidate: true}, "OK").
+			WithAuthErrors().
+			WithNotFoundError(NotFoundErrorSchema).
+			Handler(handler)
+
+		updateOp := NewSimple().
+			PUT("/users/{id}").
+			WithSuccessResponse(200, &mockSchema{shouldValidate: true}, "Updated").
+			WithAuthErrors().
+			WithValidationErrors().
+			WithNotFoundError(NotFoundErrorSchema).
+			Handler(handler)
+
+		// Test variadic registration
+		err := router.Register(createOp, getOp, updateOp)
+		if err != nil {
+			t.Fatalf("Failed to register multiple operations: %v", err)
+		}
+
+		// Verify all operations were registered
+		operations := router.GetOperations()
+		if len(operations) != 3 {
+			t.Errorf("Expected 3 operations, got %d", len(operations))
+		}
+
+		// Verify generator processed all operations
+		if len(generator.processedOps) != 3 {
+			t.Errorf("Expected generator to process 3 operations, got %d", len(generator.processedOps))
+		}
+
+		// Test that all HTTP routes work
+		testRoutes := []struct {
+			method string
+			path   string
+		}{
+			{"POST", "/users"},
+			{"GET", "/users/123"},
+			{"PUT", "/users/123"},
+		}
+
+		for _, route := range testRoutes {
+			req := httptest.NewRequest(route.method, route.path, nil)
+			w := httptest.NewRecorder()
+			engine.ServeHTTP(w, req)
+
+			if w.Code != http.StatusOK {
+				t.Errorf("Expected status 200 for %s %s, got %d", route.method, route.path, w.Code)
+			}
+		}
+	})
+
+	t.Run("Variadic register with operation error", func(t *testing.T) {
+		engine := createTestEngine()
+		generator := &mockGenerator{
+			shouldError: true,
+			errorMsg:    "processing failed",
+		}
+		router := ginadapter.NewGinRouter(engine, generator)
+
+		handler := gin.HandlerFunc(func(c *gin.Context) {
+			c.JSON(200, gin.H{"message": "test"})
+		})
+
+		op1 := CompiledOperation{Method: "GET", Path: "/test1", Handler: handler}
+		op2 := CompiledOperation{Method: "GET", Path: "/test2", Handler: handler}
+
+		// Should fail on first operation
+		err := router.Register(op1, op2)
+		if err == nil {
+			t.Error("Expected registration to fail when generator returns error")
+		}
+
+		if !strings.Contains(err.Error(), "failed to register operation GET /test1") {
+			t.Errorf("Expected specific error message, got: %v", err)
+		}
+	})
+}

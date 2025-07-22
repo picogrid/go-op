@@ -35,9 +35,16 @@ type OperationDefinition struct {
 	Params      *SchemaDefinition
 	Query       *SchemaDefinition
 	Body        *SchemaDefinition
-	Response    *SchemaDefinition
+	Response    *SchemaDefinition          // Deprecated: use Responses instead
+	Responses   map[int]ResponseDefinition // Multiple responses with status codes
 	SourceFile  string
 	LineNumber  int
+}
+
+// ResponseDefinition represents a response with schema and description
+type ResponseDefinition struct {
+	Schema      *SchemaDefinition
+	Description string
 }
 
 // SchemaDefinition represents a discovered schema definition
@@ -257,8 +264,28 @@ func (g *Generator) addOperationToSpec(op OperationDefinition) {
 		openAPIOp.RequestBody = g.convertSchemaToRequestBody(op.Body)
 	}
 
-	// Add response schema if specified
-	if op.Response != nil {
+	// Add responses - prefer multiple responses if available
+	switch {
+	case len(op.Responses) > 0:
+		// Use new multiple responses
+		for code, respDef := range op.Responses {
+			codeStr := fmt.Sprintf("%d", code)
+			response := operations.OpenAPIResponse{
+				Description: respDef.Description,
+			}
+
+			if respDef.Schema != nil {
+				response.Content = map[string]operations.OpenAPIMediaType{
+					"application/json": {
+						Schema: g.convertSchemaToOpenAPI(respDef.Schema),
+					},
+				}
+			}
+
+			openAPIOp.Responses[codeStr] = response
+		}
+	case op.Response != nil:
+		// Fallback to legacy single response
 		openAPIOp.Responses["200"] = operations.OpenAPIResponse{
 			Description: "Successful response",
 			Content: map[string]operations.OpenAPIMediaType{
@@ -267,7 +294,7 @@ func (g *Generator) addOperationToSpec(op OperationDefinition) {
 				},
 			},
 		}
-	} else {
+	default:
 		// Add default success response
 		openAPIOp.Responses["200"] = operations.OpenAPIResponse{
 			Description: "Successful response",

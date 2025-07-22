@@ -282,6 +282,76 @@ func (a *ASTAnalyzer) processMethodCall(methodName string, args []ast.Expr, op *
 		if len(args) > 0 {
 			op.Response = a.extractSchemaDefinition(args[0])
 		}
+	case "WithSuccessResponse":
+		// Initialize responses map if needed
+		if op.Responses == nil {
+			op.Responses = make(map[int]ResponseDefinition)
+		}
+		// WithSuccessResponse(code int, schema Schema, description string)
+		if len(args) >= 3 {
+			if code := a.extractIntLiteral(args[0]); code > 0 {
+				schema := a.extractSchemaDefinition(args[1])
+				desc := a.extractStringLiteral(args[2])
+				op.Responses[code] = ResponseDefinition{
+					Schema:      schema,
+					Description: desc,
+				}
+			}
+		}
+	case "WithCreateErrors":
+		// Initialize responses map if needed
+		if op.Responses == nil {
+			op.Responses = make(map[int]ResponseDefinition)
+		}
+		// Add standard create error responses: 400, 401, 403, 409, 422, 500
+		a.addStandardErrorResponse(op, 400, "Bad Request")
+		a.addStandardErrorResponse(op, 401, "Unauthorized")
+		a.addStandardErrorResponse(op, 403, "Forbidden")
+		a.addStandardErrorResponse(op, 409, "Conflict")
+		a.addStandardErrorResponse(op, 422, "Unprocessable Entity")
+		a.addStandardErrorResponse(op, 500, "Internal Server Error")
+	case "WithAuthErrors":
+		// Initialize responses map if needed
+		if op.Responses == nil {
+			op.Responses = make(map[int]ResponseDefinition)
+		}
+		// Add auth error responses: 401, 403
+		a.addStandardErrorResponse(op, 401, "Unauthorized")
+		a.addStandardErrorResponse(op, 403, "Forbidden")
+	case "WithValidationErrors":
+		// Initialize responses map if needed
+		if op.Responses == nil {
+			op.Responses = make(map[int]ResponseDefinition)
+		}
+		// Add validation error responses: 400, 422
+		a.addStandardErrorResponse(op, 400, "Bad Request")
+		a.addStandardErrorResponse(op, 422, "Unprocessable Entity")
+	case "WithBadRequestError", "WithUnauthorizedError", "WithForbiddenError",
+		"WithNotFoundError", "WithConflictError", "WithUnprocessableEntityError",
+		"WithServerError", "WithBadGatewayError", "WithServiceUnavailableError":
+		// Initialize responses map if needed
+		if op.Responses == nil {
+			op.Responses = make(map[int]ResponseDefinition)
+		}
+		// Map method names to status codes
+		statusCode := a.getStatusCodeForErrorMethod(methodName)
+		if statusCode > 0 && len(args) > 0 {
+			schema := a.extractSchemaDefinition(args[0])
+			op.Responses[statusCode] = ResponseDefinition{
+				Schema:      schema,
+				Description: a.getDescriptionForStatusCode(statusCode),
+			}
+		}
+	case "WithNoContentResponse":
+		// Initialize responses map if needed
+		if op.Responses == nil {
+			op.Responses = make(map[int]ResponseDefinition)
+		}
+		// 204 No Content response
+		op.Responses[204] = ResponseDefinition{
+			Schema:      nil, // No content
+			Description: "No Content",
+		}
 	}
 }
 
@@ -295,6 +365,97 @@ func (a *ASTAnalyzer) extractStringLiteral(expr ast.Expr) string {
 		}
 	}
 	return ""
+}
+
+// extractIntLiteral extracts integer value from a basic literal
+func (a *ASTAnalyzer) extractIntLiteral(expr ast.Expr) int {
+	if basicLit, ok := expr.(*ast.BasicLit); ok && basicLit.Kind == token.INT {
+		var value int
+		fmt.Sscanf(basicLit.Value, "%d", &value)
+		return value
+	}
+	return 0
+}
+
+// addStandardErrorResponse adds a standard error response with generic schema
+func (a *ASTAnalyzer) addStandardErrorResponse(op *OperationDefinition, code int, description string) {
+	// For now, use a generic error schema structure
+	// In a real implementation, this could reference actual error schemas
+	errorSchema := &SchemaDefinition{
+		Type: "object",
+		Properties: map[string]*SchemaDefinition{
+			"error": {
+				Type:    "string",
+				Example: strings.ToLower(strings.ReplaceAll(description, " ", "_")),
+			},
+			"message": {
+				Type:    "string",
+				Example: description,
+			},
+			"code": {
+				Type:    "number",
+				Example: fmt.Sprintf("%d", code),
+			},
+		},
+		Required: []string{"error", "message"},
+	}
+
+	op.Responses[code] = ResponseDefinition{
+		Schema:      errorSchema,
+		Description: description,
+	}
+}
+
+// getStatusCodeForErrorMethod maps error method names to HTTP status codes
+func (a *ASTAnalyzer) getStatusCodeForErrorMethod(methodName string) int {
+	switch methodName {
+	case "WithBadRequestError":
+		return 400
+	case "WithUnauthorizedError":
+		return 401
+	case "WithForbiddenError":
+		return 403
+	case "WithNotFoundError":
+		return 404
+	case "WithConflictError":
+		return 409
+	case "WithUnprocessableEntityError":
+		return 422
+	case "WithServerError":
+		return 500
+	case "WithBadGatewayError":
+		return 502
+	case "WithServiceUnavailableError":
+		return 503
+	default:
+		return 0
+	}
+}
+
+// getDescriptionForStatusCode returns a standard description for HTTP status codes
+func (a *ASTAnalyzer) getDescriptionForStatusCode(code int) string {
+	switch code {
+	case 400:
+		return "Bad Request"
+	case 401:
+		return "Unauthorized"
+	case 403:
+		return "Forbidden"
+	case 404:
+		return "Not Found"
+	case 409:
+		return "Conflict"
+	case 422:
+		return "Unprocessable Entity"
+	case 500:
+		return "Internal Server Error"
+	case 502:
+		return "Bad Gateway"
+	case 503:
+		return "Service Unavailable"
+	default:
+		return fmt.Sprintf("HTTP %d", code)
+	}
 }
 
 // extractNumberLiteral extracts numeric value from a basic literal
