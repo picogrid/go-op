@@ -101,5 +101,5 @@ echo "   • Order processing (e-commerce, analytics)"
 echo "   • Notification system (messaging, templates)"
 echo "   • Comprehensive schemas with validation"
 echo "   • Path/query/body parameters"
-echo "   • Service-specific tags for organization"
+echo "   • Service-specific tags for structure"
 echo

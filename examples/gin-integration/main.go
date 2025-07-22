@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
-	"github.com/picogrid/go-op"
+	goop "github.com/picogrid/go-op"
 	"github.com/picogrid/go-op/operations"
 	ginadapter "github.com/picogrid/go-op/operations/adapters/gin"
 	"github.com/picogrid/go-op/validators"
@@ -22,7 +22,7 @@ import (
 // 3. Type-safe validation with automatic OpenAPI generation
 // 4. Migration patterns from manual validation to go-op schemas
 
-// Domain models matching an existing system (e.g., Legion Platform)
+// Domain models matching an existing system (e.g., Platform Platform)
 type User struct {
 	ID        uuid.UUID `json:"id"`
 	Email     string    `json:"email"`
@@ -52,7 +52,7 @@ type PaginatedResponse[T any] struct {
 	Paging     map[string]interface{} `json:"paging"`
 }
 
-// Simulated service layer (like Legion's container pattern)
+// Simulated service layer (like Platform's container pattern)
 type UserService struct {
 	// In real app: database, cache, etc.
 }

@@ -787,7 +787,8 @@ func main() {
 		Description("Creates a new user account with the provided information").
 		Tags("users").
 		WithBody(createUserBodySchema).
-		WithResponse(userResponseSchema).
+		WithSuccessResponse(201, userResponseSchema, "User created successfully").
+		WithCreateErrors(). // Equivalent to multiple @Failure annotations
 		Handler(ginadapter.CreateValidatedHandler(
 			createUserHandler,
 			nil,
@@ -802,7 +803,12 @@ func main() {
 		Description("Retrieves a specific user by their unique identifier").
 		Tags("users").
 		WithParams(userParamsSchema).
-		WithResponse(userResponseSchema).
+		WithSuccessResponse(200, userResponseSchema, "User retrieved successfully").
+		WithBadRequestError(operations.ValidationErrorSchema).
+		WithUnauthorizedError(operations.UnauthorizedErrorSchema).
+		WithForbiddenError(operations.ForbiddenErrorSchema).
+		WithNotFoundError(operations.NotFoundErrorSchema).
+		WithServerError(operations.InternalServerErrorSchema).
 		Handler(ginadapter.CreateValidatedHandler(
 			getUserHandler,
 			userParamsSchema,
@@ -818,7 +824,13 @@ func main() {
 		Tags("users").
 		WithParams(userParamsSchema).
 		WithBody(updateUserBodySchema).
-		WithResponse(userResponseSchema).
+		WithSuccessResponse(200, userResponseSchema, "User updated successfully").
+		WithBadRequestError(operations.ValidationErrorSchema).
+		WithUnauthorizedError(operations.UnauthorizedErrorSchema).
+		WithForbiddenError(operations.ForbiddenErrorSchema).
+		WithNotFoundError(operations.NotFoundErrorSchema).
+		WithConflictError(operations.ConflictErrorSchema).
+		WithServerError(operations.InternalServerErrorSchema).
 		Handler(ginadapter.CreateValidatedHandler(
 			updateUserHandler,
 			userParamsSchema,
@@ -833,6 +845,12 @@ func main() {
 		Description("Permanently deletes a user account").
 		Tags("users").
 		WithParams(userParamsSchema).
+		WithNoContentResponse().
+		WithBadRequestError(operations.ValidationErrorSchema).
+		WithUnauthorizedError(operations.UnauthorizedErrorSchema).
+		WithForbiddenError(operations.ForbiddenErrorSchema).
+		WithNotFoundError(operations.NotFoundErrorSchema).
+		WithServerError(operations.InternalServerErrorSchema).
 		Handler(ginadapter.CreateValidatedHandler(
 			deleteUserHandler,
 			userParamsSchema,
@@ -847,7 +865,11 @@ func main() {
 		Description("Retrieves a paginated list of users with optional filtering").
 		Tags("users").
 		WithQuery(listUsersQuerySchema).
-		WithResponse(userListResponseSchema).
+		WithSuccessResponse(200, userListResponseSchema, "Users retrieved successfully").
+		WithAuthErrors().
+		WithBadRequestError(operations.ValidationErrorSchema).
+		WithServerError(operations.InternalServerErrorSchema).
+		WithTooManyRequestsError(operations.TooManyRequestsErrorSchema).
 		Handler(ginadapter.CreateValidatedHandler(
 			listUsersHandler,
 			nil,
@@ -866,7 +888,13 @@ func main() {
 		Tags("users", "profile", "oneof-example").
 		WithParams(userParamsSchema).
 		WithBody(updateUserProfileBodySchema).
-		WithResponse(userResponseSchema).
+		WithSuccessResponse(200, userResponseSchema, "User profile updated successfully").
+		WithBadRequestError(operations.ValidationErrorSchema).
+		WithUnauthorizedError(operations.UnauthorizedErrorSchema).
+		WithForbiddenError(operations.ForbiddenErrorSchema).
+		WithNotFoundError(operations.NotFoundErrorSchema).
+		WithConflictError(operations.ConflictErrorSchema).
+		WithServerError(operations.InternalServerErrorSchema).
 		Handler(ginadapter.CreateValidatedHandler(
 			updateUserHandler, // Reuse existing handler for demo
 			userParamsSchema,
@@ -905,7 +933,8 @@ func main() {
 		Summary("Get API version and service information").
 		Description("Returns the current API version with const validation and service features using OpenAPI 3.1 uniqueItems").
 		Tags("meta").
-		WithResponse(apiVersionResponseSchema).
+		WithSuccessResponse(200, apiVersionResponseSchema, "API information retrieved successfully").
+		WithServerError(operations.InternalServerErrorSchema).
 		Handler(ginadapter.CreateValidatedHandler(
 			func(ctx context.Context, params struct{}, query struct{}, body struct{}) (map[string]interface{}, error) {
 				return map[string]interface{}{
@@ -922,14 +951,16 @@ func main() {
 			apiVersionResponseSchema,
 		))
 
-	// Register operations
-	router.Register(createUserOp)
-	router.Register(getUserOp)
-	router.Register(updateUserOp)
-	router.Register(deleteUserOp)
-	router.Register(listUsersOp)
-	router.Register(updateUserProfileOp) // OneOf showcase operation
-	router.Register(getAPIVersionOp)     // OpenAPI 3.1 features showcase
+	// Register operations using variadic Register method
+	router.Register(
+		createUserOp,
+		getUserOp,
+		updateUserOp,
+		deleteUserOp,
+		listUsersOp,
+		updateUserProfileOp, // OneOf showcase operation
+		getAPIVersionOp,     // OpenAPI 3.1 features showcase
+	)
 
 	// Health check
 	engine.GET("/health", func(c *gin.Context) {

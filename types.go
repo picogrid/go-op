@@ -4,6 +4,13 @@ package goop
 // This is framework-agnostic and can be adapted to any HTTP framework
 type HTTPHandler interface{}
 
+// ResponseDefinition represents a response with its schema, description, and optional headers
+type ResponseDefinition struct {
+	Schema      Schema
+	Description string
+	Headers     map[string]Schema
+}
+
 // CompiledOperation represents a fully compiled operation with all metadata
 // This structure contains everything needed for zero-reflection runtime execution
 type CompiledOperation struct {
@@ -18,15 +25,18 @@ type CompiledOperation struct {
 	ParamsSpec   *OpenAPISchema
 	QuerySpec    *OpenAPISchema
 	BodySpec     *OpenAPISchema
-	ResponseSpec *OpenAPISchema
+	ResponseSpec *OpenAPISchema // Keep for backward compatibility
 	HeaderSpec   *OpenAPISchema
 
 	// Validation schemas for runtime validation
 	ParamsSchema   Schema
 	QuerySchema    Schema
 	BodySchema     Schema
-	ResponseSchema Schema
+	ResponseSchema Schema // Keep for backward compatibility
 	HeaderSchema   Schema
+
+	// Multiple responses support
+	Responses map[int]ResponseDefinition
 
 	// Security requirements for this operation
 	Security SecurityRequirements
@@ -35,7 +45,7 @@ type CompiledOperation struct {
 	// This is framework-specific and should be cast to the appropriate type
 	Handler HTTPHandler
 
-	// Success HTTP status code
+	// Success HTTP status code (backward compatibility)
 	SuccessCode int
 }
 

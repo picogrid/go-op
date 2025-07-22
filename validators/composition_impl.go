@@ -139,14 +139,10 @@ func (c *compositionSchema) validateAllOf(data interface{}) error {
 
 // validateAnyOf ensures at least one schema matches
 func (c *compositionSchema) validateAnyOf(data interface{}) error {
-	var errors []error
-
 	for i, schema := range c.schemas {
 		if validator, ok := schema.(goop.Schema); ok {
 			if err := validator.Validate(data); err == nil {
 				return nil // At least one schema matches
-			} else {
-				errors = append(errors, err)
 			}
 		} else {
 			return goop.NewValidationError("anyOf", data, fmt.Sprintf("schema at index %d does not implement Schema interface", i))
