@@ -286,9 +286,24 @@ func (o *objectSchema) validate(data interface{}) error {
 }
 
 func (o *objectSchema) validateField(fieldSchema, value interface{}) error {
+	// Handle pointer dereferencing automatically
+	actualValue := value
+	if value != nil {
+		val := reflect.ValueOf(value)
+		if val.Kind() == reflect.Ptr {
+			if val.IsNil() {
+				// For nil pointers, pass nil to the validator
+				actualValue = nil
+			} else {
+				// Dereference the pointer
+				actualValue = val.Elem().Interface()
+			}
+		}
+	}
+
 	// First, try the standard Validate method (for finalized schemas)
 	if validator, ok := fieldSchema.(interface{ Validate(interface{}) error }); ok {
-		return validator.Validate(value)
+		return validator.Validate(actualValue)
 	}
 
 	// Handle unfinalized schemas by type - automatically treat them as required
@@ -298,35 +313,35 @@ func (o *objectSchema) validateField(fieldSchema, value interface{}) error {
 		requiredSchema := &requiredStringSchema{schema}
 		requiredSchema.required = true
 		requiredSchema.optional = false
-		return requiredSchema.Validate(value)
+		return requiredSchema.Validate(actualValue)
 
 	case *numberSchema:
 		// Create a required number validator from the unfinalized schema
 		requiredSchema := &requiredNumberSchema{schema}
 		requiredSchema.required = true
 		requiredSchema.optional = false
-		return requiredSchema.Validate(value)
+		return requiredSchema.Validate(actualValue)
 
 	case *objectSchema:
 		// Create a required object validator from the unfinalized schema
 		requiredSchema := &requiredObjectSchema{schema}
 		requiredSchema.required = true
 		requiredSchema.optional = false
-		return requiredSchema.Validate(value)
+		return requiredSchema.Validate(actualValue)
 
 	case *boolSchema:
 		// Create a required bool validator from the unfinalized schema
 		requiredSchema := &requiredBoolSchema{schema}
 		requiredSchema.required = true
 		requiredSchema.optional = false
-		return requiredSchema.Validate(value)
+		return requiredSchema.Validate(actualValue)
 
 	case *arraySchema:
 		// Create a required array validator from the unfinalized schema
 		requiredSchema := &requiredArraySchema{schema}
 		requiredSchema.required = true
 		requiredSchema.optional = false
-		return requiredSchema.Validate(value)
+		return requiredSchema.Validate(actualValue)
 	}
 
 	// Try reflection as a fallback for other types
@@ -339,7 +354,7 @@ func (o *objectSchema) validateField(fieldSchema, value interface{}) error {
 	validateMethod := val.MethodByName("Validate")
 	if validateMethod.IsValid() {
 		// Call the Validate method
-		results := validateMethod.Call([]reflect.Value{reflect.ValueOf(value)})
+		results := validateMethod.Call([]reflect.Value{reflect.ValueOf(actualValue)})
 		if len(results) > 0 {
 			if err, ok := results[0].Interface().(error); ok {
 				return err
