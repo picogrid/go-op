@@ -39,6 +39,11 @@ func NewNestedValidationError(field string, value interface{}, message string, d
 
 // sanitizeValueForError creates a clean representation of values for error messages
 func sanitizeValueForError(value interface{}) interface{} {
+	return sanitizeValueForErrorWithCycleDetection(value, make(map[uintptr]bool))
+}
+
+// sanitizeValueForErrorWithCycleDetection handles sanitization with cycle detection
+func sanitizeValueForErrorWithCycleDetection(value interface{}, visited map[uintptr]bool) interface{} {
 	if value == nil {
 		return nil
 	}
@@ -49,8 +54,18 @@ func sanitizeValueForError(value interface{}) interface{} {
 		if val.IsNil() {
 			return nil
 		}
+		// Check for cycles in pointer structures
+		ptrAddr := val.Pointer()
+		if visited[ptrAddr] {
+			return fmt.Sprintf("<cyclic reference to %s>", val.Type().String())
+		}
+		// Mark this pointer as visited
+		visited[ptrAddr] = true
 		// For pointers, show the dereferenced value
-		return sanitizeValueForError(val.Elem().Interface())
+		result := sanitizeValueForErrorWithCycleDetection(val.Elem().Interface(), visited)
+		// Remove from visited after processing (allows multiple non-cyclic references)
+		delete(visited, ptrAddr)
+		return result
 	case reflect.Map:
 		// Keep small maps as-is for test compatibility, sanitize large ones
 		if val.Len() <= 5 {
