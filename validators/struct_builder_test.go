@@ -2,6 +2,7 @@ package validators_test
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/picogrid/go-op/validators"
@@ -416,6 +417,124 @@ func TestJSONUnmarshalWithValidation(t *testing.T) {
 	if result == nil || result.Email != "test@example.com" {
 		t.Error("Incorrect result after JSON unmarshal")
 	}
+}
+
+// TestPointerFieldValidation tests the core functionality that fixes the original issue
+// where pointer fields in structs were causing "invalid type, expected object" errors
+func TestPointerFieldValidation(t *testing.T) {
+	// Helper function for struct-to-map conversion (matches existing test pattern)
+	structToMap := func(v interface{}) map[string]interface{} {
+		data, _ := json.Marshal(v)
+		var m map[string]interface{}
+		json.Unmarshal(data, &m)
+		return m
+	}
+
+	t.Run("Original failing case - pointer struct validation", func(t *testing.T) {
+		// This is the exact scenario that was failing before the fix
+		type Viewport struct {
+			Bearing   *float64 `json:"bearing,omitempty"`
+			Latitude  *float64 `json:"latitude,omitempty"`
+			Longitude *float64 `json:"longitude,omitempty"`
+		}
+
+		type UpdateRequest struct {
+			Viewport *Viewport `json:"viewport,omitempty"`
+		}
+
+		float64Ptr := func(v float64) *float64 { return &v }
+
+		viewportSchema := validators.ForStruct[Viewport]().
+			Field("bearing", validators.Number().Min(0).Max(360).Optional()).
+			Field("latitude", validators.Number().Min(-90).Max(90).Optional()).
+			Field("longitude", validators.Number().Min(-180).Max(180).Optional()).
+			Optional().
+			Build()
+
+		requestSchema := validators.ForStruct[UpdateRequest]().
+			Field("viewport", viewportSchema).
+			Build()
+
+		// Valid case should pass
+		valid := UpdateRequest{
+			Viewport: &Viewport{
+				Bearing:   float64Ptr(45.0),
+				Latitude:  float64Ptr(37.7749),
+				Longitude: float64Ptr(-122.4194),
+			},
+		}
+		err := requestSchema.Validate(structToMap(valid))
+		if err != nil {
+			t.Errorf("Valid pointer field validation failed: %v", err)
+		}
+
+		// Invalid case should give clear error (not cryptic pointer error)
+		invalid := UpdateRequest{
+			Viewport: &Viewport{
+				Bearing: float64Ptr(400.0), // Invalid: exceeds max of 360
+			},
+		}
+		err = requestSchema.Validate(structToMap(invalid))
+		if err == nil {
+			t.Error("Expected validation error for invalid bearing value")
+		} else {
+			errorMsg := err.Error()
+			// Should show clear field path, not cryptic pointer addresses
+			if !strings.Contains(errorMsg, "viewport.bearing") {
+				t.Errorf("Expected field path 'viewport.bearing' in error, got: %s", errorMsg)
+			}
+			if !strings.Contains(errorMsg, "360") {
+				t.Errorf("Expected constraint value '360' in error, got: %s", errorMsg)
+			}
+			// Should NOT contain cryptic pointer errors
+			if strings.Contains(errorMsg, "0x") || strings.Contains(errorMsg, "invalid type") {
+				t.Errorf("Error message should not contain cryptic pointer addresses: %s", errorMsg)
+			}
+		}
+
+		// Nil optional pointer should pass
+		nilCase := UpdateRequest{Viewport: nil}
+		err = requestSchema.Validate(structToMap(nilCase))
+		if err != nil {
+			t.Errorf("Nil optional pointer field should pass validation: %v", err)
+		}
+	})
+
+	t.Run("Nested pointer structures", func(t *testing.T) {
+		type Inner struct {
+			Value *int `json:"value,omitempty"`
+		}
+		type Outer struct {
+			Inner *Inner `json:"inner,omitempty"`
+		}
+
+		intPtr := func(v int) *int { return &v }
+
+		innerSchema := validators.ForStruct[Inner]().
+			Field("value", validators.Number().Min(0).Max(100).Optional()).
+			Optional().
+			Build()
+
+		outerSchema := validators.ForStruct[Outer]().
+			Field("inner", innerSchema).
+			Build()
+
+		// Valid nested pointer
+		valid := Outer{Inner: &Inner{Value: intPtr(50)}}
+		err := outerSchema.Validate(structToMap(valid))
+		if err != nil {
+			t.Errorf("Valid nested pointer validation failed: %v", err)
+		}
+
+		// Invalid nested pointer should show field path
+		invalid := Outer{Inner: &Inner{Value: intPtr(150)}}
+		err = outerSchema.Validate(structToMap(invalid))
+		if err == nil {
+			t.Error("Expected validation error for invalid nested value")
+		} else if !strings.Contains(err.Error(), "inner.value") {
+			t.Errorf("Expected nested field path in error: %s", err.Error())
+		}
+	})
 }
 
 func TestWithFields(t *testing.T) {

@@ -2,6 +2,8 @@ package goop
 
 import (
 	"encoding/json"
+	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -380,6 +382,113 @@ func TestValidationErrorEdgeCases(t *testing.T) {
 		// Should have parent + 100 child errors = 101 total
 		if len(result) != 101 {
 			t.Errorf("Expected 101 errors, got %d", len(result))
+		}
+	})
+}
+
+// TestSanitizeValueCycleDetection tests cycle detection in sanitizeValueForError
+func TestSanitizeValueCycleDetection(t *testing.T) {
+	t.Run("Pointer cycle detection", func(t *testing.T) {
+		// Create a pointer
+		val1 := 1
+		ptr1 := &val1
+
+		// Simulate what happens when we have a pointer that references itself
+		// by creating a scenario where the visited map would catch it
+		visited := make(map[uintptr]bool)
+
+		// Test direct cycle detection by calling the internal function
+		// Put ptr1's address in visited map first
+		val := reflect.ValueOf(ptr1)
+		ptrAddr := val.Pointer()
+		visited[ptrAddr] = true
+
+		// Now try to sanitize ptr1 - should detect cycle
+		result := sanitizeValueForErrorWithCycleDetection(ptr1, visited)
+		resultStr := fmt.Sprintf("%v", result)
+
+		if !strings.Contains(resultStr, "cyclic reference") {
+			t.Errorf("Expected cycle detection message, got: %s", resultStr)
+		}
+	})
+
+	t.Run("Self-referencing pointer", func(t *testing.T) {
+		// Create a self-referencing structure
+		type SelfRef struct {
+			Value int
+			Self  *SelfRef
+		}
+
+		selfRef := &SelfRef{Value: 42}
+		selfRef.Self = selfRef // Self-reference
+
+		// Test with ValidationError creation
+		err := NewValidationError("field", selfRef, "test error")
+
+		// Should not cause infinite recursion
+		errorMsg := err.Error()
+		if errorMsg == "" {
+			t.Error("Error message should not be empty")
+		}
+
+		// JSON serialization should also work
+		jsonStr := err.ErrorJSON()
+		if jsonStr == "" {
+			t.Error("JSON serialization should not fail")
+		}
+	})
+
+	t.Run("Multiple non-cyclic references", func(t *testing.T) {
+		// Test that multiple references to the same object don't trigger false positives
+		type Shared struct {
+			Value string
+		}
+
+		shared := &Shared{Value: "shared"}
+
+		type Container struct {
+			Ref1 *Shared
+			Ref2 *Shared
+		}
+
+		container := &Container{
+			Ref1: shared,
+			Ref2: shared, // Same pointer, but not cyclic
+		}
+
+		// Should handle multiple references without false cycle detection
+		sanitized := sanitizeValueForError(container)
+		sanitizedStr := fmt.Sprintf("%v", sanitized)
+
+		// Should not indicate false cycle
+		if strings.Contains(sanitizedStr, "<cyclic reference") {
+			t.Errorf("False cycle detection for multiple references: %s", sanitizedStr)
+		}
+	})
+
+	t.Run("Deep nesting without cycles", func(t *testing.T) {
+		// Create deep nesting without cycles
+		type Deep struct {
+			Level int
+			Next  *Deep
+		}
+
+		var current *Deep
+		// Create 10-level deep structure
+		for i := 10; i >= 1; i-- {
+			current = &Deep{Level: i, Next: current}
+		}
+
+		// Should handle deep nesting without issues
+		sanitized := sanitizeValueForError(current)
+		if sanitized == nil {
+			t.Error("Deep nesting should not return nil")
+		}
+
+		// Should not indicate cycle
+		sanitizedStr := fmt.Sprintf("%v", sanitized)
+		if strings.Contains(sanitizedStr, "<cyclic reference") {
+			t.Errorf("False cycle detection for deep nesting: %s", sanitizedStr)
 		}
 	})
 }
