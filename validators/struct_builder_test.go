@@ -535,6 +535,237 @@ func TestPointerFieldValidation(t *testing.T) {
 			t.Errorf("Expected nested field path in error: %s", err.Error())
 		}
 	})
+
+	// Additional pointer field test cases that were originally in separate files
+	t.Run("Various pointer types validation", func(t *testing.T) {
+		type UserProfile struct {
+			Name   *string `json:"name,omitempty"`
+			Age    *int    `json:"age,omitempty"`
+			Active *bool   `json:"active,omitempty"`
+			Scores *[]int  `json:"scores,omitempty"`
+		}
+
+		profileValidator := validators.ForStruct[UserProfile]().
+			Field("name", validators.String().Min(1).Optional()).
+			Field("age", validators.Number().Min(0).Max(150).Optional()).
+			Field("active", validators.Bool().Optional()).
+			Field("scores", validators.Array(validators.Number().Min(0).Max(100)).Optional()).
+			Optional()
+
+		tests := []struct {
+			name        string
+			jsonInput   string
+			expectValid bool
+		}{
+			{"nil string pointer", `{"name": null}`, true},
+			{"valid string pointer", `{"name": "John"}`, true},
+			{"nil int pointer", `{"age": null}`, true},
+			{"valid int pointer", `{"age": 25}`, true},
+			{"nil bool pointer", `{"active": null}`, true},
+			{"valid bool pointer", `{"active": true}`, true},
+			{"nil array pointer", `{"scores": null}`, true},
+			{"valid array pointer", `{"scores": [95, 87, 92]}`, true},
+			{"empty string pointer (passes for optional)", `{"name": ""}`, true}, // Optional strings allow empty strings
+			{"invalid int pointer (negative)", `{"age": -5}`, false},
+			{"invalid array pointer (bad values)", `{"scores": [95, 101, 92]}`, false}, // 101 > 100
+		}
+
+		for _, tc := range tests {
+			t.Run(tc.name, func(t *testing.T) {
+				var data interface{}
+				err := json.Unmarshal([]byte(tc.jsonInput), &data)
+				if err != nil {
+					t.Fatalf("Failed to parse JSON: %v", err)
+				}
+
+				err = profileValidator.Build().Validate(data)
+
+				if tc.expectValid && err != nil {
+					t.Errorf("Expected validation to pass, but got error: %v", err)
+				} else if !tc.expectValid && err == nil {
+					t.Errorf("Expected validation to fail, but it passed")
+				}
+
+				// Ensure no memory addresses appear in error messages
+				if err != nil && strings.Contains(err.Error(), "0x") {
+					t.Errorf("Error message should not contain memory addresses: %s", err.Error())
+				}
+			})
+		}
+	})
+
+	// Test the original issue reproduction scenario
+	t.Run("Original issue reproduction", func(t *testing.T) {
+		// Exact reproduction of the structs and validators from issue.md
+		type IssueViewport struct {
+			Bearing   *float64 `json:"bearing,omitempty"`
+			Latitude  *float64 `json:"latitude,omitempty"`
+			Longitude *float64 `json:"longitude,omitempty"`
+			Pitch     *float64 `json:"pitch,omitempty"`
+			Zoom      *float64 `json:"zoom,omitempty"`
+		}
+
+		type IssueUpdateRequest struct {
+			Viewport *IssueViewport `json:"viewport,omitempty"`
+		}
+
+		// Create validators exactly as shown in issue.md
+		ViewportValidator := validators.ForStruct[IssueViewport]().
+			Field("bearing", validators.Number().Min(0).Max(360).Optional()).
+			Field("latitude", validators.Number().Min(-90).Max(90).Optional()).
+			Field("longitude", validators.Number().Min(-180).Max(180).Optional()).
+			Field("pitch", validators.Number().Min(0).Max(60).Optional()).
+			Field("zoom", validators.Number().Min(0).Max(24).Optional()).
+			Optional()
+
+		UpdateRequestValidator := validators.ForStruct[IssueUpdateRequest]().
+			Field("viewport", ViewportValidator)
+
+		// Test the exact JSON input from issue.md
+		jsonInput := `{
+			"viewport": {
+				"bearing": 400.0
+			}
+		}`
+
+		var data interface{}
+		err := json.Unmarshal([]byte(jsonInput), &data)
+		if err != nil {
+			t.Fatalf("Failed to parse JSON: %v", err)
+		}
+
+		// This should fail validation because bearing = 400 > 360
+		err = UpdateRequestValidator.Build().Validate(data)
+		if err == nil {
+			t.Errorf("Expected validation to fail for bearing = 400, but it passed")
+			return
+		}
+
+		errorMsg := err.Error()
+		t.Logf("Error message: %s", errorMsg)
+
+		// Verify the fix: error message should NOT contain memory addresses
+		if strings.Contains(errorMsg, "0x") {
+			t.Errorf("Error message still contains memory addresses (original issue not fixed): %s", errorMsg)
+		}
+
+		// Verify the fix: error message should mention the field name
+		if !strings.Contains(errorMsg, "bearing") {
+			t.Errorf("Error message should mention 'bearing' field: %s", errorMsg)
+		}
+
+		// Most importantly: error should not be the cryptic original message
+		if strings.Contains(errorMsg, "field schema does not implement validation interface") {
+			t.Errorf("Error message shows original bug - schema interface issue: %s", errorMsg)
+		}
+
+		// Test that valid values work
+		validJSON := `{"viewport": {"bearing": 90.0}}`
+		err = json.Unmarshal([]byte(validJSON), &data)
+		if err != nil {
+			t.Fatalf("Failed to parse JSON: %v", err)
+		}
+
+		err = UpdateRequestValidator.Build().Validate(data)
+		if err != nil {
+			t.Errorf("Expected validation to pass for bearing = 90, but got error: %v", err)
+		}
+	})
+
+	// Test CreateValidatedHandler scenario mentioned in the issue
+	t.Run("CreateValidatedHandler simulation", func(t *testing.T) {
+		type TestViewport struct {
+			Bearing  *float64 `json:"bearing,omitempty"`
+			Latitude *float64 `json:"latitude,omitempty"`
+		}
+
+		type TestUpdateRequest struct {
+			Viewport *TestViewport `json:"viewport,omitempty"`
+		}
+
+		ViewportValidator := validators.ForStruct[TestViewport]().
+			Field("bearing", validators.Number().Min(0).Max(360).Optional()).
+			Field("latitude", validators.Number().Min(-90).Max(90).Optional()).
+			Optional()
+
+		UpdateRequestValidator := validators.ForStruct[TestUpdateRequest]().
+			Field("viewport", ViewportValidator)
+
+		// Simulate what CreateValidatedHandler would do - parse JSON and validate
+		tests := []struct {
+			name           string
+			jsonInput      string
+			wantError      bool
+			errorSubstring string // What we expect to find in error message
+		}{
+			{
+				name:           "Invalid bearing should give clear error",
+				jsonInput:      `{"viewport": {"bearing": 400.0}}`,
+				wantError:      true,
+				errorSubstring: "bearing", // Should mention the field name
+			},
+			{
+				name:           "Invalid latitude should give clear error",
+				jsonInput:      `{"viewport": {"latitude": 100.0}}`,
+				wantError:      true,
+				errorSubstring: "latitude",
+			},
+			{
+				name:      "Valid values should pass",
+				jsonInput: `{"viewport": {"bearing": 45.0, "latitude": 40.0}}`,
+				wantError: false,
+			},
+			{
+				name:      "Empty viewport should pass",
+				jsonInput: `{"viewport": {}}`,
+				wantError: false,
+			},
+		}
+
+		for _, tc := range tests {
+			t.Run(tc.name, func(t *testing.T) {
+				// Parse JSON (what HTTP handler would do)
+				var requestData interface{}
+				err := json.Unmarshal([]byte(tc.jsonInput), &requestData)
+				if err != nil {
+					t.Fatalf("Failed to parse JSON: %v", err)
+				}
+
+				// Validate request body (what CreateValidatedHandler would do)
+				err = UpdateRequestValidator.Build().Validate(requestData)
+
+				if tc.wantError {
+					if err == nil {
+						t.Errorf("Expected validation error, but validation passed")
+						return
+					}
+
+					errorMsg := err.Error()
+					t.Logf("Validation error (expected): %s", errorMsg)
+
+					// Verify no memory addresses appear
+					if strings.Contains(errorMsg, "0x") {
+						t.Errorf("Error message contains memory addresses: %s", errorMsg)
+					}
+
+					// Verify field name is mentioned
+					if tc.errorSubstring != "" && !strings.Contains(strings.ToLower(errorMsg), tc.errorSubstring) {
+						t.Errorf("Error message should contain '%s': %s", tc.errorSubstring, errorMsg)
+					}
+
+					// Verify it's not the original cryptic error
+					if strings.Contains(errorMsg, "field schema does not implement validation interface") {
+						t.Errorf("Still showing original bug error: %s", errorMsg)
+					}
+
+				} else {
+					if err != nil {
+						t.Errorf("Expected validation to pass, but got error: %v", err)
+					}
+				}
+			})
+		}
+	})
 }
 
 func TestWithFields(t *testing.T) {
