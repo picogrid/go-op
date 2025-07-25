@@ -1,6 +1,7 @@
 package validators
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 
@@ -286,19 +287,10 @@ func (o *objectSchema) validate(data interface{}) error {
 }
 
 func (o *objectSchema) validateField(fieldSchema, value interface{}) error {
-	// Handle pointer dereferencing automatically
+	// Enhanced pointer dereferencing and value normalization
 	actualValue := value
 	if value != nil {
-		val := reflect.ValueOf(value)
-		if val.Kind() == reflect.Ptr {
-			if val.IsNil() {
-				// For nil pointers, pass nil to the validator
-				actualValue = nil
-			} else {
-				// Dereference the pointer
-				actualValue = val.Elem().Interface()
-			}
-		}
+		actualValue = o.normalizeFieldValue(value)
 	}
 
 	// First, try the standard Validate method (for finalized schemas)
@@ -342,6 +334,22 @@ func (o *objectSchema) validateField(fieldSchema, value interface{}) error {
 		requiredSchema.required = true
 		requiredSchema.optional = false
 		return requiredSchema.Validate(actualValue)
+
+	// Handle StructSchemaBuilder types (generic support)
+	default:
+		// Check if it's a StructSchemaBuilder by looking for a Build method
+		if builder := reflect.ValueOf(fieldSchema); builder.IsValid() {
+			buildMethod := builder.MethodByName("Build")
+			if buildMethod.IsValid() && buildMethod.Type().NumOut() == 1 {
+				// Call Build() to get the actual schema
+				results := buildMethod.Call([]reflect.Value{})
+				if len(results) > 0 {
+					if builtSchema, ok := results[0].Interface().(interface{ Validate(interface{}) error }); ok {
+						return builtSchema.Validate(actualValue)
+					}
+				}
+			}
+		}
 	}
 
 	// Try reflection as a fallback for other types
@@ -374,6 +382,82 @@ func (o *objectSchema) getErrorMessage(validationType, defaultMessage string) st
 		}
 	}
 	return defaultMessage
+}
+
+// normalizeFieldValue handles pointer dereferencing and value normalization for field validation.
+// This method ensures that pointer fields are properly dereferenced and struct values are
+// converted to appropriate types for validation.
+func (o *objectSchema) normalizeFieldValue(value interface{}) interface{} {
+	if value == nil {
+		return nil
+	}
+
+	val := reflect.ValueOf(value)
+
+	// Handle pointer dereferencing (including multiple levels of indirection)
+	for val.Kind() == reflect.Ptr {
+		if val.IsNil() {
+			return nil
+		}
+		val = val.Elem()
+	}
+
+	// Get the dereferenced value
+	actualValue := val.Interface()
+
+	// Handle struct values that might need conversion to maps for object validation
+	if val.Kind() == reflect.Struct {
+		// For struct values, we need to check if this field expects an object
+		// If so, convert the struct to a map via JSON marshaling/unmarshaling
+		// This handles cases where JSON unmarshaling creates struct values instead of maps
+		if o.isStructToMapConversionNeeded(actualValue) {
+			if converted := o.convertStructToMap(actualValue); converted != nil {
+				return converted
+			}
+		}
+	}
+
+	return actualValue
+}
+
+// isStructToMapConversionNeeded determines if a struct value should be converted to a map
+// for object validation. This helps handle mixed JSON/struct data types.
+func (o *objectSchema) isStructToMapConversionNeeded(value interface{}) bool {
+	// For now, we'll be conservative and only convert if it's clearly needed
+	// This could be enhanced in the future based on the validator type
+	val := reflect.ValueOf(value)
+	if val.Kind() != reflect.Struct {
+		return false
+	}
+
+	// Check if the struct has JSON tags, which indicates it's meant for JSON serialization
+	structType := val.Type()
+	for i := 0; i < structType.NumField(); i++ {
+		field := structType.Field(i)
+		if jsonTag := field.Tag.Get("json"); jsonTag != "" && jsonTag != "-" {
+			return true
+		}
+	}
+
+	return false
+}
+
+// convertStructToMap converts a struct to a map[string]interface{} using JSON marshaling.
+// This handles the common case where JSON unmarshaling creates struct values that need
+// to be validated as objects.
+func (o *objectSchema) convertStructToMap(value interface{}) map[string]interface{} {
+	// Use JSON marshaling to convert struct to map, preserving JSON tag semantics
+	jsonData, err := json.Marshal(value)
+	if err != nil {
+		return nil // Conversion failed, return nil to use original value
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(jsonData, &result); err != nil {
+		return nil // Conversion failed, return nil to use original value
+	}
+
+	return result
 }
 
 // BoolBuilder implementation (initial state)

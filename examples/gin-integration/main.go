@@ -373,7 +373,8 @@ func createGoOpHandlers(userService *UserService) (
 	listHandler = func(ctx context.Context, params struct{}, query struct {
 		Limit  int
 		Offset int
-	}, body struct{}) (PaginatedResponse[User], error) {
+	}, body struct{},
+	) (PaginatedResponse[User], error) {
 		resp, err := userService.ListUsers(ctx, query.Limit, query.Offset)
 		if err != nil {
 			return PaginatedResponse[User]{}, err
