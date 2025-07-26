@@ -1,12 +1,35 @@
 package gin
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 
 	goop "github.com/picogrid/go-op"
 )
+
+// structToMap converts a struct to map[string]interface{} for validation.
+// This is necessary because ForStruct validators expect map data, not struct types.
+func structToMap(v interface{}) (map[string]interface{}, error) {
+	if v == nil {
+		return nil, nil
+	}
+
+	// Marshal struct to JSON
+	data, err := json.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+
+	// Unmarshal JSON to map
+	var m map[string]interface{}
+	if err := json.Unmarshal(data, &m); err != nil {
+		return nil, err
+	}
+
+	return m, nil
+}
 
 // CreateValidatedHandler creates a high-performance Gin handler with automatic validation
 // This function generates optimized validation code without reflection
@@ -31,7 +54,18 @@ func CreateValidatedHandler[P, Q, B, R any](
 				})
 				return
 			}
-			if err := paramsSchema.Validate(params); err != nil {
+
+			// Convert struct to map for validation
+			paramsMap, err := structToMap(params)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error":   "Failed to process path parameters",
+					"details": err.Error(),
+				})
+				return
+			}
+
+			if err := paramsSchema.Validate(paramsMap); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
 					"error":   "Path parameter validation failed",
 					"details": err.Error(),
@@ -49,7 +83,18 @@ func CreateValidatedHandler[P, Q, B, R any](
 				})
 				return
 			}
-			if err := querySchema.Validate(query); err != nil {
+
+			// Convert struct to map for validation
+			queryMap, err := structToMap(query)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error":   "Failed to process query parameters",
+					"details": err.Error(),
+				})
+				return
+			}
+
+			if err := querySchema.Validate(queryMap); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
 					"error":   "Query parameter validation failed",
 					"details": err.Error(),
@@ -67,7 +112,19 @@ func CreateValidatedHandler[P, Q, B, R any](
 				})
 				return
 			}
-			if err := bodySchema.Validate(body); err != nil {
+
+			// Convert struct to map for validation
+			// ForStruct validators expect map[string]interface{}, not struct types
+			bodyMap, err := structToMap(body)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error":   "Failed to process request body",
+					"details": err.Error(),
+				})
+				return
+			}
+
+			if err := bodySchema.Validate(bodyMap); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
 					"error":   "Request body validation failed",
 					"details": err.Error(),
@@ -89,7 +146,17 @@ func CreateValidatedHandler[P, Q, B, R any](
 
 		// Validate response if schema is provided
 		if responseSchema != nil {
-			if err := responseSchema.Validate(result); err != nil {
+			// Convert struct to map for validation
+			resultMap, err := structToMap(result)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error":   "Failed to process response",
+					"details": err.Error(),
+				})
+				return
+			}
+
+			if err := responseSchema.Validate(resultMap); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error":   "Response validation failed",
 					"details": err.Error(),
