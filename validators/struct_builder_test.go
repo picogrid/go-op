@@ -758,10 +758,8 @@ func TestPointerFieldValidation(t *testing.T) {
 						t.Errorf("Still showing original bug error: %s", errorMsg)
 					}
 
-				} else {
-					if err != nil {
-						t.Errorf("Expected validation to pass, but got error: %v", err)
-					}
+				} else if err != nil {
+					t.Errorf("Expected validation to pass, but got error: %v", err)
 				}
 			})
 		}
