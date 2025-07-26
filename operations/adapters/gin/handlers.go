@@ -1,6 +1,7 @@
 package gin
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -133,8 +134,15 @@ func CreateValidatedHandler[P, Q, B, R any](
 			}
 		}
 
+		// Transfer all Gin context values to standard context
+		// We intentionally use string keys here to preserve Gin's context keys
+		ctx := c.Request.Context()
+		for key, value := range c.Keys {
+			ctx = context.WithValue(ctx, key, value) //nolint:staticcheck // SA1029: Gin uses string keys, we must preserve them
+		}
+
 		// Call the business logic handler
-		result, err := handler(c.Request.Context(), params, query, body)
+		result, err := handler(ctx, params, query, body)
 		if err != nil {
 			// Handle business logic errors
 			c.JSON(http.StatusInternalServerError, gin.H{
