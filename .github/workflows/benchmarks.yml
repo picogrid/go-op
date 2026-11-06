@@ -38,7 +38,7 @@ jobs:
 
     strategy:
       matrix:
-        go-version: ["1.23", "1.24"]
+        go-version: ["1.25", "1.26"]
 
     steps:
       - name: Checkout code
@@ -190,7 +190,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: "1.24"
+          go-version: "1.26"
 
       - name: Generate memory profile
         run: |
@@ -215,7 +215,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: "1.24"
+          go-version: "1.26"
 
       - name: Run performance-critical benchmarks
         run: |
