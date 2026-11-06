@@ -290,7 +290,7 @@ func TestValidateConcurrently(t *testing.T) {
 
 		// Should complete much faster than sequential (50 * 1ms = 50ms)
 		// With 10 workers, should be closer to 5-10ms
-		if concurrentDuration > 100*time.Millisecond {
+		if !raceEnabled && concurrentDuration > 100*time.Millisecond {
 			t.Errorf("Concurrent validation took too long: %v", concurrentDuration)
 		}
 	})
