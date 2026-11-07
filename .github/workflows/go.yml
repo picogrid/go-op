@@ -49,7 +49,7 @@ jobs:
 
       # The wall-clock assertions skip under -race, so run the root package's timing tests without it.
       - name: Run timing tests without the race detector
-        run: go test -v -count=1 -run 'TestPerformanceBenchmarks|TestValidateConcurrently' .
+        run: go test -v -count=1 -run 'TestPerformanceBenchmarks|TestValidateConcurrently|TestIntegrationScenarios' .
 
       - name: Upload coverage to Codecov
         if: matrix.go-version == env.GO_VERSION
