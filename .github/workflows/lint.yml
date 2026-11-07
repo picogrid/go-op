@@ -21,4 +21,4 @@ jobs:
         uses: golangci/golangci-lint-action@v7
         with:
           args: --timeout=30m --config=./.golangci.yml --issues-exit-code=0
-          version: v2.0
+          version: v2.15.0

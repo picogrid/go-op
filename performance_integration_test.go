@@ -25,7 +25,7 @@ func TestPerformanceBenchmarks(t *testing.T) {
 		t.Logf("Created 10,000 validation errors in %v", duration)
 
 		// Should complete quickly
-		if duration > 100*time.Millisecond {
+		if !raceEnabled && duration > 100*time.Millisecond {
 			t.Errorf("Validation error creation too slow: %v", duration)
 		}
 	})
@@ -340,7 +340,7 @@ func TestIntegrationScenarios(t *testing.T) {
 
 		// Performance check - should complete within reasonable time
 		maxExpectedTime := 30 * time.Second
-		if duration > maxExpectedTime {
+		if !raceEnabled && duration > maxExpectedTime {
 			t.Errorf("High-load test took too long: %v > %v", duration, maxExpectedTime)
 		}
 	})
